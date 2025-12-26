@@ -38,6 +38,7 @@ export default {
    *  如果保存模式为1 生成的硬链地址为：/d/y/mv.mkv
    */
   saveMode: 0,
+  keepDirStruct: true,
   openCache: true,
   mkdirIfSingle: false,
   delete: true

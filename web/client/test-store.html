@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Store Test</title>
+</head>
+<body>
+  <h1>Pinia Store Test</h1>
+  <div id="app">
+    <button onclick="testStore()">Test Store</button>
+    <div id="output"></div>
+  </div>
+  
+  <script>
+    function testStore() {
+      const output = document.getElementById('output');
+      output.innerHTML = '<p>Testing store behavior...</p>';
+      
+      // 模拟多次调用 store
+      console.log('=== Test 1: First call ===');
+      console.log('=== Test 2: Second call ===');
+      console.log('=== Test 3: Third call ===');
+      
+      output.innerHTML += '<p>Check console for results</p>';
+    }
+  </script>
+</body>
+</html>

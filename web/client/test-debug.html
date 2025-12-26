@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Debug Test</title>
+  <style>
+    body { font-family: monospace; padding: 20px; }
+    .log { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 4px; }
+    .success { color: green; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+  <h1>路由切换调试测试</h1>
+  <div id="status"></div>
+  <div id="logs"></div>
+  
+  <script>
+    const status = document.getElementById('status');
+    const logs = document.getElementById('logs');
+    
+    function addLog(message, type = 'info') {
+      const div = document.createElement('div');
+      div.className = `log ${type}`;
+      div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logs.appendChild(div);
+      console.log(message);
+    }
+    
+    // 测试说明
+    addLog('测试步骤：');
+    addLog('1. 打开浏览器控制台');
+    addLog('2. 访问 http://localhost:5174/');
+    addLog('3. 查看控制台是否有 "[TaskList] 路由切换到任务列表，刷新数据"');
+    addLog('4. 点击导航栏切换到"配置管理"');
+    addLog('5. 查看控制台是否有 "[ConfigList] 路由切换到配置管理，刷新数据"');
+    addLog('6. 再切换回"任务列表"');
+    addLog('7. 查看控制台是否再次有 "[TaskList] 路由切换到任务列表，刷新数据"');
+    
+    status.innerHTML = '<p class="success">✓ 测试页面已加载，请按照上述步骤测试</p>';
+  </script>
+</body>
+</html>

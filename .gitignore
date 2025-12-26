@@ -2,6 +2,10 @@ node_modules
 lib/
 .hlink
 
+# Development docs
+/docs
+docs/dev/
+
 /docs/.vitepress/dist
 .DS_Store
 
@@ -22,3 +26,6 @@ dist-ssr
 /.vscode
 /packages/app/db.json
 /packages/app/hlink
+
+/.kiro
+
