@@ -209,14 +209,33 @@ func (s *Service) StartWatchWithOptions(name string, logger func(string, string)
 
 	w, err := core.NewWatcher(opts, logger)
 	if err != nil {
+		// Update task state: set error message
+		if task, ok := s.Get(name); ok {
+			task.IsWatching = false
+			task.WatchError = err.Error()
+			s.Update(name, task)
+		}
 		return err
 	}
 
 	if err := w.Start(); err != nil {
+		// Update task state: set error message
+		if task, ok := s.Get(name); ok {
+			task.IsWatching = false
+			task.WatchError = err.Error()
+			s.Update(name, task)
+		}
 		return err
 	}
 
 	s.watchers[name] = w
+
+	// Success: clear error and set watching state
+	if task, ok := s.Get(name); ok {
+		task.IsWatching = true
+		task.WatchError = ""
+		s.Update(name, task)
+	}
 
 	// Save watch state
 	go func() {
@@ -240,6 +259,13 @@ func (s *Service) StopWatch(name string) error {
 	// Stop watcher in a goroutine to avoid blocking
 	go w.Stop()
 	delete(s.watchers, name)
+
+	// Clear watch state and error
+	if task, ok := s.Get(name); ok {
+		task.IsWatching = false
+		task.WatchError = ""
+		s.Update(name, task)
+	}
 
 	// Save watch state in a goroutine to avoid blocking
 	go func() {
@@ -345,13 +371,28 @@ func (s *Service) restoreWatchState() error {
 				w.Stop()
 				delete(s.watchers, taskName)
 				s.wMu.Unlock()
+
+				// Update task state: set error message
+				if task, ok := s.Get(taskName); ok {
+					task.IsWatching = false
+					task.WatchError = err.Error()
+					s.Update(taskName, task)
+				}
 				continue
 			}
 
 			s.watchers[taskName] = w
+			s.wMu.Unlock()
+
+			// Success: clear error and set watching state
+			if task, ok := s.Get(taskName); ok {
+				task.IsWatching = true
+				task.WatchError = ""
+				s.Update(taskName, task)
+			}
+
 			fmt.Printf("✅ 已恢复任务监听: %s\n", taskName)
 		}
-		s.wMu.Unlock()
 	}
 
 	return nil

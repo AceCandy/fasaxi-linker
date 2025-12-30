@@ -38,13 +38,61 @@ func NewWatcher(opts Options, logger func(string, string)) (*Watcher, error) {
 func (w *Watcher) Start() error {
 	taskName := w.options.Name
 	w.logger("INFO", fmt.Sprintf("🚀 [%s] 监听服务启动中...", taskName))
+
+	// Collect path errors by category
+	var failedSrcs []string
+	var failedDests []string
+	var otherErrors []string
+	failedCount := 0
+
 	// Add paths
-	for src,dest := range w.options.PathsMapping {
+	for src, dests := range w.options.PathsMapping {
+		// 1. Check source existence
+		if _, err := os.Stat(src); err != nil {
+			failedSrcs = append(failedSrcs, src)
+			w.logger("ERROR", fmt.Sprintf("❌ 源路径不存在: %s", src))
+			failedCount++
+			continue
+		}
+
+		// 2. Check destination(s) existence
+		destOk := true
+		for _, dest := range dests {
+			if _, err := os.Stat(dest); err != nil {
+				failedDests = append(failedDests, dest)
+				w.logger("ERROR", fmt.Sprintf("❌ 目标路径不存在: %s", dest))
+				destOk = false
+				break
+			}
+		}
+		if !destOk {
+			failedCount++
+			continue
+		}
+
+		// 3. Add to watcher
 		if err := w.AddRecursive(src); err != nil {
-			w.logger("ERROR", fmt.Sprintf("❌ 无法监听路径 %s => %s: %v", src, dest, err))
-		} else{
-      w.logger("INFO", fmt.Sprintf("🩺 路径[%s] => %s 正在监听中...", src, dest))
-    }
+			otherErrors = append(otherErrors, fmt.Sprintf("%s: %v", src, err))
+			w.logger("ERROR", fmt.Sprintf("❌ 无法监听路径 %s: %v", src, err))
+			failedCount++
+		} else {
+			w.logger("INFO", fmt.Sprintf("🩺 路径[%s] => %v 正在监听中...", src, dests))
+		}
+	}
+
+	// If any path failed, return formatted error
+	if failedCount > 0 {
+		var msgs []string
+		if len(failedSrcs) > 0 {
+			msgs = append(msgs, fmt.Sprintf("源路径无法监听 (%s)", strings.Join(failedSrcs, "、")))
+		}
+		if len(failedDests) > 0 {
+			msgs = append(msgs, fmt.Sprintf("目标路径不存在:(%s)", strings.Join(failedDests, "、")))
+		}
+		if len(otherErrors) > 0 {
+			msgs = append(msgs, fmt.Sprintf("其他异常: %s", strings.Join(otherErrors, "; ")))
+		}
+		return fmt.Errorf("监听失败: %s", strings.Join(msgs, "; "))
 	}
 
 	go w.eventLoop()

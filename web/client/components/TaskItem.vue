@@ -8,7 +8,7 @@
       <div class="ribbon-corner" :class="data.type === 'main' ? 'ribbon-corner--hardlink' : 'ribbon-corner--sync'"></div>
     </div>
 
-    <div class="task-card" :class="{ 'task-card--watching': data.isWatching }">
+    <div class="task-card" :class="{ 'task-card--watching': data.isWatching, 'task-card--error': data.watchError }">
       <!-- 头部：任务名称 + 配置 + 状态 -->
       <div class="card-header">
         <div class="task-name">{{ data.name }}</div>
@@ -29,6 +29,11 @@
 
       <!-- 路径映射列表 -->
       <div v-if="data.pathsMapping?.length" class="path-list">
+        <!-- 监听失败提示 -->
+        <div v-if="data.watchError" class="watch-error-info">
+          <v-icon icon="mdi-alert-circle-outline" size="14" color="error"></v-icon>
+          <span class="error-text">{{ data.watchError }}</span>
+        </div>
         <div v-for="(mapping, idx) in data.pathsMapping" :key="idx" class="path-group">
           <div class="path-item">
             <v-icon icon="mdi-folder-outline" size="16" color="primary"></v-icon>
@@ -185,19 +190,26 @@ const toggleWatch = async () => {
       await stopWatch(props.data.name)
       // 本地更新状态，不刷新整个列表
       props.data.isWatching = false
+      props.data.watchError = '' // 清除错误
     } else {
       await startWatch(props.data.name)
       // 本地更新状态，不刷新整个列表
       props.data.isWatching = true
+      props.data.watchError = '' // 清除错误
     }
     // 通知父组件状态已变更（可选，用于其他需要）
     emit('watch-change')
-  } catch (e) {
-    console.error(e)
+  } catch (e: any) {
+    // 失败时恢复状态并显示错误
+    props.data.isWatching = false
+    props.data.watchError = e.response?.data?.message || e.message || '未知错误'
+    console.error('Watch toggle failed:', e)
   } finally {
     watchLoading.value = false
   }
 }
+
+
 </script>
 
 <style scoped>
@@ -223,7 +235,19 @@ const toggleWatch = async () => {
 
 .task-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(102, 126, 234, 0.15);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+  border-color: rgba(102, 126, 234, 0.3);
+}
+
+.task-card--error {
+  border: 1.5px solid #ff5252;
+  box-shadow: 0 0 12px rgba(255, 82, 82, 0.2);
+}
+
+.task-card--error:hover {
+  border-color: #ff5252;
+  box-shadow: 0 4px 16px rgba(255, 82, 82, 0.3);
+  transform: translateY(-4px);
 }
 
 .task-card:active {
@@ -379,6 +403,7 @@ const toggleWatch = async () => {
   flex: 1;
   overflow-y: auto;
   max-height: 150px;
+  position: relative;
 }
 
 .path-group {
@@ -410,6 +435,38 @@ const toggleWatch = async () => {
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1;
+}
+
+.watch-error-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: white; /* Ensure background to cover content behind when sticky */
+  border-bottom: 1px solid rgba(255, 82, 82, 0.2);
+  margin-bottom: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.watch-error-info::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 82, 82, 0.08); /* Apply the red tint via pseudo-element */
+  z-index: -1;
+  border-radius: 4px;
+}
+
+.error-text {
+  font-size: 11px;
+  color: #ff5252;
+  font-weight: 500;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 功能按钮区域 */

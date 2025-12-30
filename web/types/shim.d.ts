@@ -14,6 +14,7 @@ export type TTask = {
   scheduleValue?: string
   pathsMapping?: { source: string, dest: string }[]
   isWatching?: boolean
+  watchError?: string
 }
 
 export type TSchedule = Required<

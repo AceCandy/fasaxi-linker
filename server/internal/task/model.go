@@ -21,6 +21,8 @@ type Task struct {
 	ScheduleValue string        `json:"scheduleValue,omitempty"`
 	Reverse       bool          `json:"reverse,omitempty"` // for prune
 	Config        string        `json:"config"`
+	IsWatching    bool          `json:"isWatching"`
+	WatchError    string        `json:"watchError,omitempty"` // Watch failure reason
 }
 
 type PathMapping struct {

@@ -2,12 +2,13 @@
   <v-layout class="rounded rounded-md h-screen">
     <!-- 渐变导航栏 -->
     <v-app-bar :elevation="0" class="app-nav-bar">
-      <v-app-bar-title class="font-weight-bold d-flex align-center">
-        <div class="logo-container mr-3">
-          <v-icon icon="mdi-link-variant" size="28" color="white"></v-icon>
+      <!-- Logo 和标题区域 -->
+      <div class="header-logo-section">
+        <div class="logo-container">
+          <img src="/logo.jpg" alt="Linker Logo" class="app-logo" />
         </div>
-        <span class="app-title">Fasaxi Linker</span>
-      </v-app-bar-title>
+        <span class="app-title">Linker</span>
+      </div>
       
       <v-spacer></v-spacer>
 
@@ -71,22 +72,38 @@ const $route = useRoute()
   height: 72px; /* 增加内容高度 */
 }
 
+.header-logo-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 12px;
+}
+
 .logo-container {
-  width: 42px;
-  height: 42px;
-  background: rgba(255, 255, 255, 0.2);
+  width: 44px;
+  height: 44px;
+  background: white;
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(10px);
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.app-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .app-title {
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 800;
   color: white;
   letter-spacing: 0.5px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .nav-btn {
