@@ -191,7 +191,7 @@ const handleCreate = async () => {
     currentTaskData.value = undefined
     editVisible.value = true
   } else {
-    alert('请先创建配置, 如果已有配置请刷新页面重试')
+    messageStore.warning('请先创建配置, 如果已有配置请刷新页面重试')
   }
 }
 
@@ -227,7 +227,7 @@ const handlePlay = (name: string) => {
 
 const handleSetSchedule = (name: string) => {
   // 定时任务功能已移除
-  alert('定时任务功能已移除')
+  messageStore.info('定时任务功能已移除')
 }
 
 const handleScheduleSubmit = async () => {

@@ -438,7 +438,6 @@ func (s *Service) UpdateByID(id int, c task.Config, detail string) error {
 	}
 
 	existing.Name = c.Name
-	existing.Description = c.Description
 
 	// Update list
 	for i, conf := range s.configs {

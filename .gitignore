@@ -31,3 +31,5 @@ dist-ssr
 /.kiro
 /.claude
 /plans
+.ace-tool/
+acetest-*

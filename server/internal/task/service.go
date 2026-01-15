@@ -396,3 +396,38 @@ func (s *Service) restoreWatchState() error {
 
 	return nil
 }
+
+// SyncConfigToTasks syncs configuration fields to all tasks that use the given config ID
+func (s *Service) SyncConfigToTasks(configID int, configName string, configDetail string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Parse config detail
+	var rc RuntimeConfig
+	if err := json.Unmarshal([]byte(configDetail), &rc); err != nil {
+		return fmt.Errorf("failed to parse config detail: %v", err)
+	}
+
+	// Find all tasks that use this config
+	updated := false
+	for i, task := range s.tasks {
+		if task.ConfigID == configID {
+			// Sync config name and fields to task
+			s.tasks[i].Config = configName
+			s.tasks[i].Include = rc.Include
+			s.tasks[i].Exclude = rc.Exclude
+			s.tasks[i].KeepDirStruct = rc.KeepDirStruct
+			s.tasks[i].OpenCache = rc.OpenCache
+			s.tasks[i].MkdirIfSingle = rc.MkdirIfSingle
+			s.tasks[i].DeleteDir = rc.DeleteDir
+			updated = true
+		}
+	}
+
+	if updated {
+		s.rebuildMap()
+		return s.saveTasks()
+	}
+
+	return nil
+}

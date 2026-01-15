@@ -34,6 +34,7 @@ func SetupRouter(h *Handler) *gin.Engine {
 		config.GET("/default", h.GetConfigDefault)
 		config.GET("/", h.GetConfig)
 		config.GET("/detail", h.GetConfigDetail)
+		config.GET("/related-tasks", h.GetConfigRelatedTasks)
 		config.POST("/", h.AddConfig)
 		config.PUT("/", h.UpdateConfig)
 		config.DELETE("/", h.DeleteConfig)

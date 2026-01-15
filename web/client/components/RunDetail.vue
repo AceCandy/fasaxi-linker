@@ -3,65 +3,72 @@
     v-model="isOpen"
     max-width="900"
     persistent
+    class="glass-dialog"
   >
-    <v-card class="rounded-lg">
+    <v-card class="glass-content-card">
       <!-- 优化后的标题栏 -->
-      <v-card-title class="d-flex align-center justify-space-between py-4 px-5" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-        <div class="d-flex align-center gap-3">
+      <div class="dialog-header">
+        <div class="header-icon-box" :class="`bg-${statusIconColor}-lighten-5`">
           <v-icon :color="statusIconColor" size="24">{{ statusIcon }}</v-icon>
-          <div>
-            <div class="text-h6 font-weight-medium text-white">{{ name }}</div>
-            <div class="text-caption text-white" style="opacity: 0.9;">{{ statusText }}</div>
-          </div>
         </div>
+        <div>
+          <div class="text-h6 font-weight-bold text-grey-darken-3">{{ name }}</div>
+          <div class="text-caption" :class="`text-${statusIconColor}`" style="opacity: 0.9;">{{ statusText }}</div>
+        </div>
+        <v-spacer></v-spacer>
         <v-btn 
           icon="mdi-close" 
           variant="text" 
-          density="compact" 
-          color="white"
+          density="comfortable" 
+          color="grey"
           @click="handleClose" 
           :disabled="loading"
         ></v-btn>
-      </v-card-title>
+      </div>
+
+      <v-divider class="border-opacity-50"></v-divider>
 
       <!-- 优化后的内容区域 -->
-      <v-card-text class="pa-5">
+      <v-card-text class="pa-0">
         <RunPanel :data="logs" />
       </v-card-text>
 
-      <v-divider></v-divider>
+      <v-divider class="border-opacity-50"></v-divider>
 
       <!-- 优化后的操作按钮区 -->
-      <v-card-actions class="pa-4 bg-grey-lighten-5">
+      <v-card-actions class="pa-5 bg-grey-lighten-5">
         <v-spacer></v-spacer>
         <v-btn
           v-if="showCancel"
           color="error"
-          variant="outlined"
+          variant="text"
           :loading="cancelLoading"
           @click="handleCancel"
           prepend-icon="mdi-close-circle"
+          class="action-btn"
         >
           取消
         </v-btn>
         <v-btn
           v-if="showConfirm"
           color="error"
-          variant="elevated"
+          variant="flat"
           :loading="confirmLoading"
           @click="handleConfirm"
-          prepend-icon="mdi-delete"
+          prepend-icon="mdi-delete-clock"
+          class="action-btn elevation-2"
         >
           确认删除
         </v-btn>
         <v-btn
           v-if="!loading && !showConfirm"
           color="primary"
-          variant="elevated"
+          variant="flat"
           @click="handleClose"
           prepend-icon="mdi-check"
+          class="action-btn elevation-2 px-6"
         >
-          知道了
+          完成
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -72,6 +79,7 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import RunPanel from './RunPanel.vue'
 import { useCheckConfig, cancel, makeDeleteFile } from '../composables/useTask'
+import { useMessageStore } from '../stores/message'
 import type { TSendData, TTaskStatus, TTaskType } from '../../types/shim'
 
 const props = defineProps<{
@@ -83,6 +91,8 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'close'): void
 }>()
+
+const messageStore = useMessageStore()
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -113,7 +123,7 @@ const statusIcon = computed(() => {
   return {
     succeed: 'mdi-check-circle',
     failed: 'mdi-alert-circle',
-    ongoing: 'mdi-loading',
+    ongoing: 'mdi-loading mdi-spin',
   }[status.value]
 })
 
@@ -121,7 +131,7 @@ const statusIconColor = computed(() => {
   return {
     succeed: 'success',
     failed: 'error',
-    ongoing: 'white',
+    ongoing: 'info',
   }[status.value]
 })
 
@@ -185,7 +195,8 @@ const startTask = () => {
       console.log('[RunDetail] EventSource 连接已建立')
     }
   } else {
-    alert("Sorry, server logs aren't supported on this browser :(")
+    console.error("Sorry, server logs aren't supported on this browser :(")
+    messageStore.warning("您的浏览器不支持服务器日志功能 (EventSource)")
     status.value = 'failed'
   }
 }
@@ -260,3 +271,40 @@ onUnmounted(() => {
   }
 })
 </script>
+
+<style scoped>
+.glass-content-card {
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(20px) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1) !important;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 24px;
+  gap: 12px;
+  background: white;
+}
+
+.header-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bg-success-lighten-5 { background-color: #f0fdf4; }
+.bg-error-lighten-5 { background-color: #fef2f2; }
+.bg-info-lighten-5 { background-color: #eff6ff; }
+
+.action-btn {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+</style>

@@ -9,6 +9,14 @@ import (
 
 // Helper to get options for a task, considering its linked config
 func (s *Service) getTaskOptions(t Task) core.Options {
+	// Priority 1: Use task's own fields if they exist (snapshot mode)
+	// This is the new behavior - tasks store their own config fields
+	if len(t.Include) > 0 || len(t.Exclude) > 0 {
+		// Task has its own config fields, use them directly
+		return t.ToCoreOptions()
+	}
+
+	// Priority 2: Fallback to config lookup for legacy tasks or tasks without synced fields
 	// Reload configs to ensure we have the latest version from disk
 	// This is important because ConfigService might have updated them
 	_, configs, err := s.store.Load()

@@ -32,10 +32,9 @@ func NewStore() *Store {
 }
 
 type Config struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Detail      string `json:"detail"`
+	ID     int    `json:"id"`
+	Name   string `json:"name"`
+	Detail string `json:"detail"`
 }
 
 type DBWrapper struct {
@@ -125,7 +124,7 @@ func (s *Store) loadConfigs(ctx context.Context) ([]Config, error) {
 	pool := db.GetPool()
 
 	query := `
-		SELECT id, name, description, detail
+		SELECT id, name, detail
 		FROM configs
 		ORDER BY name
 	`
@@ -141,7 +140,7 @@ func (s *Store) loadConfigs(ctx context.Context) ([]Config, error) {
 		var c Config
 		var detailJSON []byte
 
-		err := rows.Scan(&c.ID, &c.Name, &c.Description, &detailJSON)
+		err := rows.Scan(&c.ID, &c.Name, &detailJSON)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan config row: %w", err)
 		}
@@ -271,18 +270,17 @@ func (s *Store) insertTask(ctx context.Context, tx pgx.Tx, t Task, configID int,
 
 func (s *Store) insertConfig(ctx context.Context, tx pgx.Tx, c *Config) error {
 	query := `
-		INSERT INTO configs (id, name, description, detail, updated_at)
-		VALUES (COALESCE(NULLIF($1, 0), nextval(pg_get_serial_sequence('configs', 'id'))), $2, $3, $4::jsonb, CURRENT_TIMESTAMP)
+		INSERT INTO configs (id, name, detail, updated_at)
+		VALUES (COALESCE(NULLIF($1, 0), nextval(pg_get_serial_sequence('configs', 'id'))), $2, $3::jsonb, CURRENT_TIMESTAMP)
 		ON CONFLICT (id) DO UPDATE
 		SET name = EXCLUDED.name,
-			description = EXCLUDED.description,
 			detail = EXCLUDED.detail,
 			updated_at = CURRENT_TIMESTAMP
 		RETURNING id
 	`
 
 	var id int
-	if err := tx.QueryRow(ctx, query, c.ID, c.Name, c.Description, c.Detail).Scan(&id); err != nil {
+	if err := tx.QueryRow(ctx, query, c.ID, c.Name, c.Detail).Scan(&id); err != nil {
 		return err
 	}
 	c.ID = id

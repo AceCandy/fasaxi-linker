@@ -70,10 +70,9 @@ func (h *Handler) GetConfig(c *gin.Context) {
 	}
 
 	Success(c, gin.H{
-		"id":          conf.ID,
-		"name":        conf.Name,
-		"description": conf.Description,
-		"detail":      detail,
+		"id":     conf.ID,
+		"name":   conf.Name,
+		"detail": detail,
 	})
 }
 
@@ -98,10 +97,9 @@ func (h *Handler) GetConfigDetail(c *gin.Context) {
 
 func (h *Handler) AddConfig(c *gin.Context) {
 	var body struct {
-		ID          int         `json:"id"`
-		Name        string      `json:"name"`
-		Description string      `json:"description"`
-		Detail      interface{} `json:"detail"`
+		ID     int         `json:"id"`
+		Name   string      `json:"name"`
+		Detail interface{} `json:"detail"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		Error(c, err)
@@ -131,9 +129,8 @@ func (h *Handler) AddConfig(c *gin.Context) {
 	}
 
 	conf := task.Config{
-		Name:        body.Name,
-		Description: body.Description,
-		Detail:      "", // This will be set in the Add method
+		Name:   body.Name,
+		Detail: "", // This will be set in the Add method
 	}
 
 	if err := h.ConfigService.Add(conf, detailStr); err != nil {
@@ -145,10 +142,9 @@ func (h *Handler) AddConfig(c *gin.Context) {
 
 func (h *Handler) UpdateConfig(c *gin.Context) {
 	var body struct {
-		ID          int         `json:"id"`
-		Name        string      `json:"name"`
-		Description string      `json:"description"`
-		Detail      interface{} `json:"detail"`
+		ID     int         `json:"id"`
+		Name   string      `json:"name"`
+		Detail interface{} `json:"detail"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		Error(c, err)
@@ -198,24 +194,27 @@ func (h *Handler) UpdateConfig(c *gin.Context) {
 		}
 	}
 
-	if existingConfig.Name == body.Name &&
-		existingConfig.Description == body.Description &&
-		IsDetailEqual {
+	if existingConfig.Name == body.Name && IsDetailEqual {
 		// No changes
 		Success(c, true)
 		return
 	}
 
 	conf := task.Config{
-		ID:          body.ID,
-		Name:        body.Name,
-		Description: body.Description,
-		Detail:      "", // This will be set in the Update method
+		ID:     body.ID,
+		Name:   body.Name,
+		Detail: "", // This will be set in the Update method
 	}
 
 	if err := h.ConfigService.UpdateByID(body.ID, conf, detailStr); err != nil {
 		Error(c, err)
 		return
+	}
+
+	// Sync config name and fields to all related tasks
+	if err := h.Service.SyncConfigToTasks(body.ID, body.Name, detailStr); err != nil {
+		fmt.Printf("Warning: Failed to sync config to tasks: %v\n", err)
+		// Don't fail the request, just log the warning
 	}
 
 	// Check for watching tasks that use this config and restart them
@@ -234,6 +233,33 @@ func (h *Handler) UpdateConfig(c *gin.Context) {
 	}
 
 	Success(c, true)
+}
+
+func (h *Handler) GetConfigRelatedTasks(c *gin.Context) {
+	idStr := c.Query("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		ErrorMsg(c, "Config id is required")
+		return
+	}
+
+	// Get config to check if it exists
+	_, _, ok := h.ConfigService.GetByID(id)
+	if !ok {
+		ErrorMsg(c, "Config not found")
+		return
+	}
+
+	// Find all tasks that use this config
+	tasks := h.Service.GetAll()
+	var relatedTasks []string
+	for _, t := range tasks {
+		if t.ConfigID == id {
+			relatedTasks = append(relatedTasks, t.Name)
+		}
+	}
+
+	Success(c, relatedTasks)
 }
 
 func (h *Handler) DeleteConfig(c *gin.Context) {
@@ -326,8 +352,25 @@ func (h *Handler) CreateTask(c *gin.Context) {
 
 	// Resolve config name by ID (association by ID)
 	if t.ConfigID > 0 {
-		if cfg, _, ok := h.ConfigService.GetByID(t.ConfigID); ok {
+		if cfg, detail, ok := h.ConfigService.GetByID(t.ConfigID); ok {
 			t.Config = cfg.Name
+			// Sync config fields to task on creation
+			var rc struct {
+				Include       []string `json:"include"`
+				Exclude       []string `json:"exclude"`
+				KeepDirStruct bool     `json:"keepDirStruct"`
+				OpenCache     bool     `json:"openCache"`
+				MkdirIfSingle bool     `json:"mkdirIfSingle"`
+				DeleteDir     bool     `json:"deleteDir"`
+			}
+			if err := json.Unmarshal([]byte(detail), &rc); err == nil {
+				t.Include = rc.Include
+				t.Exclude = rc.Exclude
+				t.KeepDirStruct = rc.KeepDirStruct
+				t.OpenCache = rc.OpenCache
+				t.MkdirIfSingle = rc.MkdirIfSingle
+				t.DeleteDir = rc.DeleteDir
+			}
 		} else {
 			ErrorMsg(c, "Config not found")
 			return
@@ -359,8 +402,25 @@ func (h *Handler) UpdateTask(c *gin.Context) {
 
 	// Resolve config name by ID (association by ID)
 	if body.Task.ConfigID > 0 {
-		if cfg, _, ok := h.ConfigService.GetByID(body.Task.ConfigID); ok {
+		if cfg, detail, ok := h.ConfigService.GetByID(body.Task.ConfigID); ok {
 			body.Task.Config = cfg.Name
+			// Sync config fields to task when config ID changes
+			var rc struct {
+				Include       []string `json:"include"`
+				Exclude       []string `json:"exclude"`
+				KeepDirStruct bool     `json:"keepDirStruct"`
+				OpenCache     bool     `json:"openCache"`
+				MkdirIfSingle bool     `json:"mkdirIfSingle"`
+				DeleteDir     bool     `json:"deleteDir"`
+			}
+			if err := json.Unmarshal([]byte(detail), &rc); err == nil {
+				body.Task.Include = rc.Include
+				body.Task.Exclude = rc.Exclude
+				body.Task.KeepDirStruct = rc.KeepDirStruct
+				body.Task.OpenCache = rc.OpenCache
+				body.Task.MkdirIfSingle = rc.MkdirIfSingle
+				body.Task.DeleteDir = rc.DeleteDir
+			}
 		} else {
 			ErrorMsg(c, "Config not found")
 			return

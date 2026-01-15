@@ -64,7 +64,7 @@ function runTask(name: string, options: TOptions) {
     }
     return watched
   } else {
-    window.alert("Sorry, server logs aren't supported on this browser :(")
+    console.error("Sorry, server logs aren't supported on this browser :(")
   }
 }
 

@@ -1,7 +1,6 @@
 export type TConfig = {
   id?: number
   name: string
-  description?: string
   detail?: any
   configPath?: string
 }
