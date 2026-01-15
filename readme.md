@@ -67,8 +67,8 @@ Vue 3 + TypeScript + Vuetify 3
 ```
 Go (Golang)
 ├── Gin Web 框架
-├── BoltDB (或类似 KV 存储)
-├──fsnotify 文件监听
+├── PostgreSQL (配置/任务存储)
+├── fsnotify 文件监听
 └── 并发协程模型
 ```
 
@@ -100,8 +100,26 @@ pnpm dev
 ./start-web.sh
 ```
 
-### Docker 部署 (计划中)
-*(Docker 镜像构建中)*
+### Docker 部署
+
+#### 使用 docker-compose（内置 Postgres）
+```bash
+# 在项目根目录
+docker-compose up -d
+# 前端默认暴露 8080，后端 API 默认 9090
+```
+
+#### 使用 docker-compose.external-db（外部 Postgres）
+```bash
+# 需先准备好可用的 Postgres，并在 compose 文件中填好环境变量
+docker-compose -f docker-compose.external-db.yml up -d
+```
+
+#### 仅构建镜像
+```bash
+docker build -t linker-server -f server/Dockerfile ./server
+docker build -t linker-web -f web/Dockerfile ./web
+```
 
 ---
 
