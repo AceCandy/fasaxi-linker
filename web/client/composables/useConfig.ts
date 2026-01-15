@@ -55,16 +55,16 @@ export function useList() {
 export function useAddOrEdit(options?: { onSuccess?: (data: boolean) => void; onError?: (e: any) => void }) {
     const loading = ref(false)
 
-    const addOrUpdateConfig = async (newConfig: TConfig, currentConfigName?: string) => {
+    const addOrUpdateConfig = async (newConfig: Partial<TConfig>, currentConfigId?: number) => {
         loading.value = true
         try {
             const url = '/api/config'
-            const method = currentConfigName ? fetch.put : fetch.post
-            const params = currentConfigName
-                ? { preName: currentConfigName, ...newConfig }
+            const method = currentConfigId ? fetch.put : fetch.post
+            const params = currentConfigId
+                ? { id: currentConfigId, ...newConfig }
                 : newConfig
 
-            console.log('[useConfig] 请求方法:', currentConfigName ? 'PUT' : 'POST')
+            console.log('[useConfig] 请求方法:', currentConfigId ? 'PUT' : 'POST')
             console.log('[useConfig] 请求参数:', params)
             
             const res = await method<boolean>(url, params as any)
@@ -87,14 +87,14 @@ export function useGet(options?: { onSuccess?: (data: TConfig) => void; onError?
     const data = ref<TConfig>()
     const loading = ref(false)
 
-    const getItem = async (name?: string) => {
-        if (!name) {
+    const getItem = async (id?: number) => {
+        if (!id) {
             data.value = undefined
             return
         }
         loading.value = true
         try {
-            const res = await fetch.get<TConfig>('/api/config', { name })
+            const res = await fetch.get<TConfig>('/api/config', { id })
             data.value = res
             options?.onSuccess?.(res)
         } catch (e) {
@@ -110,10 +110,10 @@ export function useGet(options?: { onSuccess?: (data: TConfig) => void; onError?
 export function useDelete(options?: { onSuccess?: (data: boolean) => void; onError?: (e: any) => void }) {
     const loading = ref(false)
 
-    const rmItem = async (name: string) => {
+    const rmItem = async (id: number) => {
         loading.value = true
         try {
-            const res = await fetch.delete<boolean>('/api/config', { name })
+            const res = await fetch.delete<boolean>('/api/config', { id })
             options?.onSuccess?.(res)
             return res
         } catch (e) {

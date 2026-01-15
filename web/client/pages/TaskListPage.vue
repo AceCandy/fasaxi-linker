@@ -208,20 +208,28 @@ const handleShowCache = (task: TTask) => {
 const loadCache = async () => {
   cacheLoading.value = true
   try {
-    const response = await fetch('/api/cache')
+    const taskName = currentTask.value?.name
+    if (!taskName) {
+      console.warn('[缓存管理] 当前任务名称为空')
+      cacheFiles.value = []
+      return
+    }
+
+    // 直接通过 taskName 查询该任务的缓存
+    const response = await fetch(`/api/cache?taskName=${encodeURIComponent(taskName)}`)
     console.log('[缓存管理] 响应状态:', response.status, response.statusText)
-    
+
     // 尝试直接解析 JSON
     let data
     try {
       const text = await response.text()
       console.log('[缓存管理] 原始响应内容(前100字符):', text.slice(0, 100))
-      
+
       if (!text || !text.trim()) {
         cacheFiles.value = []
         return
       }
-      
+
       try {
         data = JSON.parse(text)
       } catch (e) {
@@ -265,7 +273,7 @@ const loadCache = async () => {
          console.warn('[缓存管理] 响应对象中缺少 data 字段:', data)
       }
     } else if (typeof data === 'string') {
-        // 情况3: 顶层就是字符串（虽然前面已经 parse 过了，理论上如果是 JSON 字符串，parse 出来如果是 string，说明原始响应是被额外引号包裹的字符串）
+        // 情况3: 顶层就是字符串
          try {
             const nested = JSON.parse(data)
             if (Array.isArray(nested)) {
@@ -277,31 +285,15 @@ const loadCache = async () => {
     }
 
     if (Array.isArray(finalFiles)) {
-       allCacheFiles.value = finalFiles // 保存全局缓存
-       
-       // 根据当前任务的源路径过滤缓存
-       const task = currentTask.value
-       if (task && task.pathsMapping && task.pathsMapping.length > 0) {
-         const sourcePaths = task.pathsMapping.map((m: any) => m.source).filter(Boolean)
-         console.log('[缓存管理] 任务源路径:', sourcePaths)
-         
-         // 过滤出属于该任务源路径的文件
-         cacheFiles.value = finalFiles.filter((filePath: string) => 
-           sourcePaths.some((src: string) => filePath.startsWith(src))
-         )
-         console.log('[缓存管理] 该任务相关缓存数量:', cacheFiles.value.length)
-       } else {
-         // 如果没有 pathsMapping，显示所有（兼容老数据）
-         cacheFiles.value = finalFiles
-       }
+       // 后端已经按 taskName 过滤，直接使用
+       cacheFiles.value = finalFiles
+       console.log('[缓存管理] 该任务缓存数量:', cacheFiles.value.length)
     } else {
        console.warn('[缓存管理] 无法解析出有效的数组数据')
-       allCacheFiles.value = []
        cacheFiles.value = []
     }
   } catch (e) {
     console.error('[缓存管理] 加载失败:', e)
-    allCacheFiles.value = []
     cacheFiles.value = []
   } finally {
     cacheLoading.value = false

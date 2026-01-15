@@ -28,13 +28,16 @@ func (s *Service) getTaskOptions(t Task) core.Options {
 		s.mu.RUnlock()
 	}
 
-	if t.Config != "" {
+	if t.ConfigID != 0 || t.Config != "" {
 		// Try to find the config in the fresh list
 		var foundConfig *Config
 		for _, c := range lookupConfigs {
-			if c.Name == t.Config {
+			if t.ConfigID != 0 && c.ID == t.ConfigID {
 				foundConfig = &c
 				break
+			}
+			if foundConfig == nil && t.Config != "" && c.Name == t.Config {
+				foundConfig = &c // fallback by name for legacy data
 			}
 		}
 
@@ -42,15 +45,23 @@ func (s *Service) getTaskOptions(t Task) core.Options {
 			// Parse config detail
 			var rc RuntimeConfig
 			if err := json.Unmarshal([]byte(foundConfig.Detail), &rc); err == nil {
-				// Success (removed debug log)
-				// fmt.Printf("DEBUG: Applying config %s to task %s\n", t.Config, t.Name)
 				return t.ToCoreOptionsWithConfig(&rc)
-			} else {
-				fmt.Printf("❌ 解析配置失败 %s (%s): %v. 使用默认配置。\n", t.Config, t.Name, err)
 			}
+			fmt.Printf("❌ 解析配置失败 %s(%d) (%s): %v. 使用默认配置。\n", foundConfig.Name, foundConfig.ID, t.Name, err)
 		} else {
-			fmt.Printf("⚠️ 未找到配置 %s (%s). 使用默认配置。\n", t.Config, t.Name)
+			fmt.Printf("⚠️ 未找到配置 %s(%d) (%s). 使用默认配置。\n", t.Config, t.ConfigID, t.Name)
 		}
 	}
 	return t.ToCoreOptions()
+}
+
+// GetOptions 获取任务最终使用的配置（优先使用 config_id 关联最新 configs）
+func (s *Service) GetOptions(name string) (core.Options, error) {
+	s.mu.RLock()
+	task, ok := s.tasksMap[name]
+	s.mu.RUnlock()
+	if !ok {
+		return core.Options{}, fmt.Errorf("task %s not found", name)
+	}
+	return s.getTaskOptions(task), nil
 }

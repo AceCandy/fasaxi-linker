@@ -20,7 +20,8 @@ type Task struct {
 	ScheduleType  string        `json:"scheduleType,omitempty"`
 	ScheduleValue string        `json:"scheduleValue,omitempty"`
 	Reverse       bool          `json:"reverse,omitempty"` // for prune
-	Config        string        `json:"config"`
+	Config        string        `json:"config"`            // config name (for display/backward compatibility)
+	ConfigID      int           `json:"configId"`          // db id for association
 	IsWatching    bool          `json:"isWatching"`
 	WatchError    string        `json:"watchError,omitempty"` // Watch failure reason
 }
@@ -74,7 +75,7 @@ func (t *Task) ToCoreOptionsWithConfig(config ConfigOptions) core.Options {
 	if config != nil {
 		includePatterns = config.GetIncludePatterns()
 	}
-	
+
 	var excludePatterns []string
 	if config != nil {
 		excludePatterns = config.GetExcludePatterns()
@@ -92,6 +93,6 @@ func (t *Task) ToCoreOptionsWithConfig(config ConfigOptions) core.Options {
 		DeleteDir:     config != nil && config.GetDeleteDir(),
 		KeepDirStruct: config != nil && config.GetKeepDirStruct(),
 	}
-	
+
 	return opts
 }

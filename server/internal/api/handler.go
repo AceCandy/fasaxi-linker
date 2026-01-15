@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"reflect"
+	"strconv"
+	"strings"
 
+	"github.com/fasaxi-linker/servergo/internal/cache"
 	"github.com/fasaxi-linker/servergo/internal/config"
 	"github.com/fasaxi-linker/servergo/internal/task"
 	"github.com/fasaxi-linker/servergo/pkg/core"
@@ -56,14 +57,20 @@ func (h *Handler) GetConfigList(c *gin.Context) {
 }
 
 func (h *Handler) GetConfig(c *gin.Context) {
-	name := c.Query("name")
-	conf, detail, ok := h.ConfigService.Get(name)
+	idStr := c.Query("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		ErrorMsg(c, "Config id is required")
+		return
+	}
+	conf, detail, ok := h.ConfigService.GetByID(id)
 	if !ok {
 		ErrorMsg(c, "Config not found")
 		return
 	}
 
 	Success(c, gin.H{
+		"id":          conf.ID,
 		"name":        conf.Name,
 		"description": conf.Description,
 		"detail":      detail,
@@ -72,14 +79,15 @@ func (h *Handler) GetConfig(c *gin.Context) {
 
 func (h *Handler) GetConfigDetail(c *gin.Context) {
 	// Parse the config content and return the configuration object
-	name := c.Query("name")
-	if name == "" {
-		ErrorMsg(c, "Config name is required")
+	idStr := c.Query("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		ErrorMsg(c, "Config id is required")
 		return
 	}
 
 	// Get parsed config from config service
-	config, ok := h.ConfigService.GetParsed(name)
+	config, ok := h.ConfigService.GetParsedByID(id)
 	if !ok {
 		ErrorMsg(c, "Config not found")
 		return
@@ -90,6 +98,7 @@ func (h *Handler) GetConfigDetail(c *gin.Context) {
 
 func (h *Handler) AddConfig(c *gin.Context) {
 	var body struct {
+		ID          int         `json:"id"`
 		Name        string      `json:"name"`
 		Description string      `json:"description"`
 		Detail      interface{} `json:"detail"`
@@ -136,7 +145,7 @@ func (h *Handler) AddConfig(c *gin.Context) {
 
 func (h *Handler) UpdateConfig(c *gin.Context) {
 	var body struct {
-		PreName     string      `json:"preName"`
+		ID          int         `json:"id"`
 		Name        string      `json:"name"`
 		Description string      `json:"description"`
 		Detail      interface{} `json:"detail"`
@@ -169,38 +178,42 @@ func (h *Handler) UpdateConfig(c *gin.Context) {
 	}
 
 	// Dirty check
-	existingConfig, existingDetail, ok := h.ConfigService.Get(body.PreName)
-	if ok {
-		// Compare fields
-		// For Detail which is JSON, we parse both and compare objects to ignore formatting differences
-		var IsDetailEqual bool
-		if existingDetail == detailStr {
-			IsDetailEqual = true
-		} else {
-			var v1, v2 interface{}
-			err1 := json.Unmarshal([]byte(existingDetail), &v1)
-			err2 := json.Unmarshal([]byte(detailStr), &v2)
-			if err1 == nil && err2 == nil {
-				IsDetailEqual = reflect.DeepEqual(v1, v2)
-			}
-		}
+	existingConfig, existingDetail, ok := h.ConfigService.GetByID(body.ID)
+	if !ok {
+		ErrorMsg(c, "Config not found")
+		return
+	}
 
-		if body.PreName == body.Name &&
-			existingConfig.Description == body.Description &&
-			IsDetailEqual {
-			// No changes
-			Success(c, true)
-			return
+	// Compare fields
+	// For Detail which is JSON, we parse both and compare objects to ignore formatting differences
+	var IsDetailEqual bool
+	if existingDetail == detailStr {
+		IsDetailEqual = true
+	} else {
+		var v1, v2 interface{}
+		err1 := json.Unmarshal([]byte(existingDetail), &v1)
+		err2 := json.Unmarshal([]byte(detailStr), &v2)
+		if err1 == nil && err2 == nil {
+			IsDetailEqual = reflect.DeepEqual(v1, v2)
 		}
 	}
 
+	if existingConfig.Name == body.Name &&
+		existingConfig.Description == body.Description &&
+		IsDetailEqual {
+		// No changes
+		Success(c, true)
+		return
+	}
+
 	conf := task.Config{
+		ID:          body.ID,
 		Name:        body.Name,
 		Description: body.Description,
 		Detail:      "", // This will be set in the Update method
 	}
 
-	if err := h.ConfigService.Update(body.PreName, conf, detailStr); err != nil {
+	if err := h.ConfigService.UpdateByID(body.ID, conf, detailStr); err != nil {
 		Error(c, err)
 		return
 	}
@@ -208,21 +221,10 @@ func (h *Handler) UpdateConfig(c *gin.Context) {
 	// Check for watching tasks that use this config and restart them
 	tasks := h.Service.GetAll()
 	for _, t := range tasks {
-		// If task uses the updated config (check against PreName as that's what the task currently holds)
-		// Or Check if t.Config == body.Name if we assume rename works?
-		// But in Update(), we update ConfigService, but Tasks still hold the old name string if it was renamed.
-		// If PreName == Name (no rename), then t.Config == PreName is correct.
-		// If PreName != Name (rename), the task link is effectively broken until task is updated,
-		// BUT we should still try to restart if it matches PreName because the config content changed.
-		// However, if we renamed it, the new start will try to load `t.Config` (which is PreName).
-		// But `PreName` no longer exists in ConfigService (it was renamed to Name).
-		// So checking for restart here handles the "Update Content" case perfectly.
-		// For "Rename" case, restarting might fail to find config, reverting to default.
-		// That is acceptable behavior for now (user should update task too).
-		if t.Config == body.PreName {
+		if t.ConfigID == body.ID || (t.ConfigID == 0 && t.Config == existingConfig.Name) {
 			if h.Service.IsWatching(t.Name) {
 				go func(taskName string) {
-					task.GetLogger(taskName)("WARN", fmt.Sprintf("⚠️ 正在重启监听: %s (配置-%s变更)\n", taskName, body.PreName))
+					task.GetLogger(taskName)("WARN", fmt.Sprintf("⚠️ 正在重启监听: %s (配置-%d变更)\n", taskName, body.ID))
 					if err := h.Service.RestartWatch(taskName); err != nil {
 						fmt.Printf("Failed to restart task %s: %v\n", taskName, err)
 					}
@@ -235,8 +237,14 @@ func (h *Handler) UpdateConfig(c *gin.Context) {
 }
 
 func (h *Handler) DeleteConfig(c *gin.Context) {
-	name := c.Query("name")
-	if err := h.ConfigService.Delete(name); err != nil {
+	idStr := c.Query("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		ErrorMsg(c, "Config id is required")
+		return
+	}
+
+	if err := h.ConfigService.Delete(id); err != nil {
 		Error(c, err)
 		return
 	}
@@ -303,7 +311,8 @@ func (h *Handler) GetTask(c *gin.Context) {
 		"scheduleType":  t.ScheduleType,
 		"scheduleValue": t.ScheduleValue,
 		"reverse":       t.Reverse,
-		"config":        t.Config, // This should be the config name, not the whole task object
+		"config":        t.Config,   // config name (display)
+		"configId":      t.ConfigID, // association id
 		"isWatching":    h.Service.IsWatching(name),
 	})
 }
@@ -313,6 +322,16 @@ func (h *Handler) CreateTask(c *gin.Context) {
 	if err := c.ShouldBindJSON(&t); err != nil {
 		Error(c, err)
 		return
+	}
+
+	// Resolve config name by ID (association by ID)
+	if t.ConfigID > 0 {
+		if cfg, _, ok := h.ConfigService.GetByID(t.ConfigID); ok {
+			t.Config = cfg.Name
+		} else {
+			ErrorMsg(c, "Config not found")
+			return
+		}
 	}
 
 	// Validate paths
@@ -336,6 +355,16 @@ func (h *Handler) UpdateTask(c *gin.Context) {
 	if err := c.ShouldBindJSON(&body); err != nil {
 		Error(c, err)
 		return
+	}
+
+	// Resolve config name by ID (association by ID)
+	if body.Task.ConfigID > 0 {
+		if cfg, _, ok := h.ConfigService.GetByID(body.Task.ConfigID); ok {
+			body.Task.Config = cfg.Name
+		} else {
+			ErrorMsg(c, "Config not found")
+			return
+		}
 	}
 
 	// Validate paths
@@ -429,8 +458,8 @@ func (h *Handler) RunTask(c *gin.Context) {
 	name := c.Query("name")
 	// alive := c.Query("alive") // '0' or '1'
 
-	t, ok := h.Service.Get(name)
-	if !ok {
+	opts, err := h.Service.GetOptions(name)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
 		return
 	}
@@ -446,20 +475,7 @@ func (h *Handler) RunTask(c *gin.Context) {
 	go func() {
 		defer close(logChan)
 
-		// Get associated config as JSON
-		var opts core.Options
-		if t.Config != "" {
-			// Get parsed config from config service
-			if parsedConfig, ok := h.ConfigService.GetParsed(t.Config); ok {
-				opts = t.ToCoreOptionsWithConfig(&parsedConfig)
-			} else {
-				opts = t.ToCoreOptions()
-			}
-		} else {
-			opts = t.ToCoreOptions()
-		}
-
-		if t.Type == "prune" {
+		if opts.Type == "prune" {
 			// Prune logic
 			files, err := core.GetPruneFiles(opts)
 			if err != nil {
@@ -527,29 +543,10 @@ func (h *Handler) StartWatch(c *gin.Context) {
 		return
 	}
 
-	// Get task
-	t, ok := h.Service.Get(body.Name)
-	if !ok {
-		ErrorMsg(c, "Task not found")
-		return
-	}
-
-	// Get associated config
-	var opts core.Options
-	if t.Config != "" {
-		if parsedConfig, ok := h.ConfigService.GetParsed(t.Config); ok {
-			opts = t.ToCoreOptionsWithConfig(&parsedConfig)
-		} else {
-			opts = t.ToCoreOptions()
-		}
-	} else {
-		opts = t.ToCoreOptions()
-	}
-
 	logger := task.GetLogger(body.Name)
 
-	// Start watcher with options
-	if err := h.Service.StartWatchWithOptions(body.Name, logger, opts); err != nil {
+	// Start watcher with latest configs (resolved inside service)
+	if err := h.Service.StartWatch(body.Name, logger); err != nil {
 		Error(c, err)
 		return
 	}
@@ -597,21 +594,48 @@ func (h *Handler) ClearTaskLog(c *gin.Context) {
 // === Cache ===
 
 func (h *Handler) GetCache(c *gin.Context) {
-	// Get cache file path
-	cachePath := h.getCachePath()
+	taskName := c.Query("taskName")
+	cacheStore := &cache.Store{}
 
-	// Read cache file
-	data, err := os.ReadFile(cachePath)
-	if os.IsNotExist(err) {
-		Success(c, "[]")
-		return
-	}
-	if err != nil {
-		ErrorMsg(c, fmt.Sprintf("读取缓存文件失败: %v", err))
-		return
+	var jsonContent string
+	var err error
+
+	if taskName != "" {
+		// Get cache for specific task
+		files, err := cacheStore.GetByTaskName(taskName)
+		if err != nil {
+			ErrorMsg(c, fmt.Sprintf("读取缓存失败: %v", err))
+			return
+		}
+
+		// Build JSON manually
+		if len(files) == 0 {
+			jsonContent = "[]"
+		} else {
+			var builder strings.Builder
+			builder.WriteString("[\n")
+			for i, file := range files {
+				builder.WriteString("  \"")
+				builder.WriteString(strings.ReplaceAll(file, "\"", "\\\""))
+				builder.WriteString("\"")
+				if i < len(files)-1 {
+					builder.WriteString(",")
+				}
+				builder.WriteString("\n")
+			}
+			builder.WriteString("]")
+			jsonContent = builder.String()
+		}
+	} else {
+		// Get all cache (backward compatibility)
+		jsonContent, err = cacheStore.GetAllAsJSON()
+		if err != nil {
+			ErrorMsg(c, fmt.Sprintf("读取缓存失败: %v", err))
+			return
+		}
 	}
 
-	Success(c, string(data))
+	Success(c, jsonContent)
 }
 
 func (h *Handler) UpdateCache(c *gin.Context) {
@@ -623,16 +647,10 @@ func (h *Handler) UpdateCache(c *gin.Context) {
 		return
 	}
 
-	cachePath := h.getCachePath()
+	cacheStore := &cache.Store{}
 
-	// Ensure directory exists
-	if err := os.MkdirAll(filepath.Dir(cachePath), 0755); err != nil {
-		Error(c, err)
-		return
-	}
-
-	// Write cache content
-	if err := os.WriteFile(cachePath, []byte(body.Content), 0644); err != nil {
+	// Update cache from JSON string
+	if err := cacheStore.SetFromJSON(body.Content); err != nil {
 		Error(c, err)
 		return
 	}
@@ -641,56 +659,13 @@ func (h *Handler) UpdateCache(c *gin.Context) {
 }
 
 func (h *Handler) GetCacheLog(c *gin.Context) {
-	logPath := h.getCacheLogPath()
-
-	data, err := os.ReadFile(logPath)
-	if os.IsNotExist(err) {
-		Success(c, "")
-		return
-	}
-	if err != nil {
-		ErrorMsg(c, fmt.Sprintf("读取日志文件失败: %v", err))
-		return
-	}
-
-	Success(c, string(data))
+	// Cache log is now stored in task_logs table
+	// Return empty for backward compatibility
+	Success(c, "")
 }
 
 func (h *Handler) ClearCacheLog(c *gin.Context) {
-	logPath := h.getCacheLogPath()
-
-	// Ensure directory exists
-	if err := os.MkdirAll(filepath.Dir(logPath), 0755); err != nil {
-		Error(c, err)
-		return
-	}
-
-	// Clear log file
-	if err := os.WriteFile(logPath, []byte(""), 0644); err != nil {
-		Error(c, err)
-		return
-	}
-
+	// Cache log is now stored in task_logs table
+	// Return success for backward compatibility
 	Success(c, true)
-}
-
-// Helper methods for cache paths
-
-func (h *Handler) getCachePath() string {
-	// Get hlink home directory
-	hlinkHome := os.Getenv("HLINK_HOME")
-	if hlinkHome == "" {
-		homeDir, _ := os.UserHomeDir()
-		hlinkHome = filepath.Join(homeDir, ".hlink")
-	}
-	return filepath.Join(hlinkHome, "cache-array.json")
-}
-
-func (h *Handler) getCacheLogPath() string {
-	hlinkHome := os.Getenv("HLINK_HOME")
-	if hlinkHome == "" {
-		homeDir, _ := os.UserHomeDir()
-		hlinkHome = filepath.Join(homeDir, ".hlink")
-	}
-	return filepath.Join(hlinkHome, "serve.log")
 }

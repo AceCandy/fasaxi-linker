@@ -180,6 +180,7 @@ func (w *Watcher) handleAdd(path string) {
 		}
 		cachePath := filepath.Join(hlinkHome, "cache-array.json")
 		cache := NewCache(cachePath)
+		cache.SetTaskName(w.options.Name) // Set task name for cache isolation
 
 		// Check if file is already in cache
 		if has, _ := cache.Has(path, true); has {
@@ -232,6 +233,7 @@ func (w *Watcher) handleAdd(path string) {
 			}
 			cachePath := filepath.Join(hlinkHome, "cache-array.json")
 			cache := NewCache(cachePath)
+			cache.SetTaskName(w.options.Name) // Set task name for cache isolation
 
 			// Add file to cache
 			if err := cache.Add([]string{path}); err != nil {

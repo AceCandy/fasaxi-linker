@@ -13,9 +13,9 @@
       <div class="card-header">
         <div class="task-name">{{ data.name }}</div>
         <div class="header-right">
-          <span class="config-badge" @click="$emit('show-config', data.config)">
+          <span class="config-badge" @click="$emit('show-config', { id: data.configId, name: data.config })">
             <v-icon icon="mdi-cog-outline" size="14"></v-icon>
-            {{ data.config }}
+            {{ data.config || '未绑定' }}
           </span>
           <div class="status-dot" :class="data.isWatching ? 'status-active' : 'status-inactive'"></div>
         </div>
@@ -138,7 +138,7 @@ const emit = defineEmits<{
   (e: 'play', name: string): void
   (e: 'set-schedule', name: string): void
   (e: 'cancel-schedule', name: string): void
-  (e: 'show-config', config: string): void
+  (e: 'show-config', config: { id?: number; name?: string }): void
   (e: 'show-log', name: string): void
   (e: 'show-cache', task: TTask): void
   (e: 'watch-change'): void

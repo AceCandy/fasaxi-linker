@@ -1,14 +1,16 @@
 export type TConfig = {
+  id?: number
   name: string
   description?: string
-  detail?: string
-  configPath: string
+  detail?: any
+  configPath?: string
 }
 
 export type TTask = {
   name: string
   type: TTaskType
-  config: string
+  config?: string
+  configId?: number
   reverse?: boolean
   scheduleType?: 'cron' | 'loop'
   scheduleValue?: string

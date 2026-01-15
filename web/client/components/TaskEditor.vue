@@ -49,11 +49,11 @@
               </v-col>
               <v-col cols="12" sm="6">
                 <v-select
-                  v-model="formData.config"
+                  v-model="formData.configId"
                   label="配置文件"
                   :items="configStore.configs"
                   item-title="name"
-                  item-value="name"
+                  item-value="id"
                   variant="outlined"
                   :rules="[v => !!v || '必须选择配置文件']"
                   :loading="configStore.loading"
@@ -220,7 +220,7 @@ const submitting = ref(false)
 const defaultData = {
   name: '',
   type: 'main' as const,
-  config: '',
+  configId: undefined as number | undefined,
   reverse: false,
   pathsMapping: [{ source: '', dest: '' }]
 }
@@ -280,7 +280,7 @@ watch(() => props.modelValue, (val) => {
       formData.value = JSON.parse(JSON.stringify(defaultData))
       // Set default config if available
       if (configStore.configs?.length) {
-        formData.value.config = configStore.configs[0].name
+        formData.value.configId = configStore.configs[0].id
       }
     }
   }

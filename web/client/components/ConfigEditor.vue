@@ -131,7 +131,7 @@ const visualData = ref<any>({})
 
 const nameRules = [
   (v: string) => !!v || '必须填写名称',
-  (v: string) => /^\w+$/.test(v) || '文件名只能包含数字/字母/下划线'
+  (v: string) => /^[\u4e00-\u9fa5\w-]+$/.test(v) || '名称只能包含中文/数字/字母/下划线/短横线'
 ]
 
 // Sync Code -> Visual
@@ -213,7 +213,7 @@ const handleSubmit = async () => {
     console.log('[ConfigEditor] 生成的配置对象（新格式）:', detailObject)
 
     const payload = props.data 
-      ? { name: props.data.name, description: formData.value.description, detail: detailObject } 
+      ? { id: props.data.id, name: props.data.name, description: formData.value.description, detail: detailObject } 
       : { name: formData.value.name, description: formData.value.description, detail: detailObject }
     
     console.log('[ConfigEditor] 准备提交的数据:', payload)

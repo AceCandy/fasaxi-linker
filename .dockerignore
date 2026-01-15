@@ -1,0 +1,51 @@
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+.pnpm-store
+
+# Build outputs
+dist
+build
+*.log
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# Documentation
+*.md
+README*
+
+# Test files
+*.test.js
+*.spec.js
+__tests__
+coverage
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+tmp
+temp
+.cache

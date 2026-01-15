@@ -53,6 +53,7 @@ import Editor from './Editor.vue'
 import { useGet } from '../composables/useConfig'
 
 const props = defineProps<{
+  id?: number
   name?: string
 }>()
 
@@ -63,10 +64,10 @@ const emit = defineEmits<{
 const isOpen = ref(false)
 const { data: configDetail, getItem, loading } = useGet()
 
-watch(() => props.name, async (newName) => {
-  if (newName) {
-    await getItem(newName)
-    console.log('[ConfigDetail] 加载配置:', newName, '数据:', configDetail.value)
+watch(() => props.id, async (newId) => {
+  if (newId) {
+    await getItem(newId)
+    console.log('[ConfigDetail] 加载配置:', newId, '数据:', configDetail.value)
     isOpen.value = true
   } else {
     isOpen.value = false

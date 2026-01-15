@@ -247,9 +247,13 @@ const handleShowCache = (task: TTask) => {
   emit('show-cache', task)
 }
 
-const handleShowConfig = async (configName: string) => {
-  await getConfigItem(configName)
-  console.log('[TaskList] 打开配置编辑器:', configName, '数据:', configData.value)
+const handleShowConfig = async (configInfo: { id?: number; name?: string }) => {
+  if (!configInfo?.id) {
+    messageStore.warning('未找到配置 ID，无法查看')
+    return
+  }
+  await getConfigItem(configInfo.id)
+  console.log('[TaskList] 打开配置编辑器:', configInfo, '数据:', configData.value)
   currentConfigData.value = configData.value
   configEditorVisible.value = true
 }
@@ -257,7 +261,7 @@ const handleShowConfig = async (configName: string) => {
 const handleConfigSubmit = async (config: TConfig) => {
   console.log('[TaskList] 收到配置提交:', config)
   try {
-    await addOrUpdateConfig(config, currentConfigData.value?.name)
+    await addOrUpdateConfig(config, currentConfigData.value?.id)
     console.log('[TaskList] 配置保存成功')
     messageStore.success('配置保存成功')
   } catch (e) {

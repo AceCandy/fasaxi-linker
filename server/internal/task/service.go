@@ -88,12 +88,11 @@ func (s *Service) GetConfigByName(name string) (Config, bool) {
 
 // Helper to save tasks preserving configs
 func (s *Service) saveTasks() error {
-	// Re-load configs to be safe? Or rely on memory?
-	// If we have separate ConfigService running, we have race condition on file.
-	// Simple fix: Store.SaveTasks(tasks) and Store.SaveConfigs(configs).
-	// But JSON is one file.
-	// Let's modify Store to read-modify-write.
-	// Or just use the configs we loaded?
+	// Re-read configs to avoid overwriting changes from ConfigService
+	_, configs, err := s.store.Load()
+	if err == nil {
+		s.configs = configs // update local configs
+	}
 	return s.store.Save(s.tasks, s.configs)
 }
 

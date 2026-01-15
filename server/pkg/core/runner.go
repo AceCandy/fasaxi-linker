@@ -25,8 +25,9 @@ func Run(opts Options, logger func(string, string)) (Stats, error) {
 		}
 		cachePath := filepath.Join(hlinkHome, "cache-array.json")
 		cache = NewCache(cachePath)
+		cache.SetTaskName(opts.Name) // Set task name for cache isolation
 		if logger != nil {
-			logger("INFO", fmt.Sprintf("Cache enabled, path: %s", cachePath))
+			logger("INFO", fmt.Sprintf("Cache enabled for task: %s", opts.Name))
 		}
 	} else {
 		if logger != nil {

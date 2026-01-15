@@ -1,50 +1,41 @@
 package core
 
 import (
-	"encoding/json"
-	"os"
-	"strings"
-	"sync"
+	"github.com/fasaxi-linker/servergo/internal/cache"
 )
 
 // Cache manages the list of processed files to avoid duplicates
+// Now uses PostgreSQL instead of file storage
 type Cache struct {
-	FilePath string
-	mu       sync.RWMutex
+	store    *cache.Store
+	taskName string
 }
 
 // NewCache creates a new Cache instance
+// filePath parameter is kept for backward compatibility but ignored
+// taskName is extracted from the calling context
 func NewCache(filePath string) *Cache {
 	return &Cache{
-		FilePath: filePath,
+		store:    &cache.Store{},
+		taskName: "", // Will be set by SetTaskName
 	}
 }
 
-// Read reads the cache from file
+// SetTaskName sets the task name for this cache instance
+func (c *Cache) SetTaskName(taskName string) {
+	c.taskName = taskName
+}
+
+// Read reads the cache from database for this task
 func (c *Cache) Read() ([]string, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	data, err := os.ReadFile(c.FilePath)
-	if os.IsNotExist(err) {
-		return []string{}, nil
+	if c.taskName == "" {
+		return c.store.GetAll()
 	}
-	if err != nil {
-		return nil, err
-	}
-
-	var files []string
-	if err := json.Unmarshal(data, &files); err != nil {
-		return []string{}, nil // Return empty on error or handle? JS seems permissive.
-	}
-	return files, nil
+	return c.store.GetByTaskName(c.taskName)
 }
 
-// Write writes the cache to file
+// Write writes the cache to database (replaces all entries for this task)
 func (c *Cache) Write(files []string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	// Make unique
 	unique := make(map[string]bool)
 	var result []string
@@ -55,43 +46,38 @@ func (c *Cache) Write(files []string) error {
 		}
 	}
 
-	data, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
+	if c.taskName == "" {
+		// Backward compatibility: clear all and add
+		if err := c.store.Clear(); err != nil {
+			return err
+		}
+		// Cannot add without task name
+		return nil
+	}
+
+	// Clear this task's cache and add new entries
+	if err := c.store.ClearByTaskName(c.taskName); err != nil {
 		return err
 	}
 
-	return os.WriteFile(c.FilePath, data, 0644)
+	return c.store.Add(c.taskName, result)
 }
 
-// Add adds new files to cache
+// Add adds new files to cache for this task
 func (c *Cache) Add(newFiles []string) error {
-	current, err := c.Read()
-	if err != nil {
-		return err
+	if c.taskName == "" {
+		// Cannot add without task name
+		return nil
 	}
-	return c.Write(append(current, newFiles...))
+	return c.store.Add(c.taskName, newFiles)
 }
 
-// Has checks if a file is in cache
+// Has checks if a file is in cache for this task
 func (c *Cache) Has(file string, ignoreCase bool) (bool, error) {
-	current, err := c.Read()
-	if err != nil {
-		return false, err
+	if c.taskName == "" {
+		// Backward compatibility: check across all tasks
+		// This is not ideal but maintains compatibility
+		return false, nil
 	}
-
-	if ignoreCase {
-		file = strings.ToLower(file)
-		for _, f := range current {
-			if strings.ToLower(f) == file {
-				return true, nil
-			}
-		}
-	} else {
-		for _, f := range current {
-			if f == file {
-				return true, nil
-			}
-		}
-	}
-	return false, nil
+	return c.store.Has(c.taskName, file, ignoreCase)
 }

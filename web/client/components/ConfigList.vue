@@ -41,15 +41,15 @@
         <!-- 配置列表 -->
         <v-row v-else>
           <v-col
-            v-for="item in configStore.configs"
-            :key="item.name"
-            cols="12"
-            sm="6"
-            lg="4"
-          >
-            <div class="config-card" @click="handleEdit(item.name)">
-              <!-- 顶部彩色条 -->
-              <div class="config-accent"></div>
+          v-for="item in configStore.configs"
+          :key="item.id"
+          cols="12"
+          sm="6"
+          lg="4"
+        >
+          <div class="config-card" @click="handleEdit(item.id)">
+            <!-- 顶部彩色条 -->
+            <div class="config-accent"></div>
               
               <div class="config-content">
                 <div class="config-header">
@@ -64,12 +64,12 @@
               </div>
               
               <div class="config-actions">
-                <v-btn icon size="x-small" variant="text" color="primary" @click.stop="handleEdit(item.name)">
+                <v-btn icon size="x-small" variant="text" color="primary" @click.stop="handleEdit(item.id)">
                   <v-icon size="16">mdi-pencil-outline</v-icon>
                   <v-tooltip activator="parent" location="top">编辑</v-tooltip>
                 </v-btn>
                 <v-spacer></v-spacer>
-                <v-btn icon size="x-small" variant="text" color="error" @click.stop="confirmDelete(item.name)">
+                <v-btn icon size="x-small" variant="text" color="error" @click.stop="confirmDelete(item)">
                   <v-icon size="16">mdi-delete-outline</v-icon>
                   <v-tooltip activator="parent" location="top">删除</v-tooltip>
                 </v-btn>
@@ -130,16 +130,16 @@ const { rmItem, loading: deleteLoading } = useDelete({ onSuccess: () => {
 
 const editorVisible = ref(false)
 const currentConfig = ref<TConfig | undefined>(undefined)
-const deleteDialog = ref({ visible: false, name: '' })
+const deleteDialog = ref({ visible: false, id: 0, name: '' })
 
 const handleCreate = () => {
   currentConfig.value = undefined
   editorVisible.value = true
 }
 
-const handleEdit = async (name: string) => {
-  await getItem(name)
-  console.log('[ConfigList] 编辑配置:', name, '数据:', configData.value)
+const handleEdit = async (id: number) => {
+  await getItem(id)
+  console.log('[ConfigList] 编辑配置:', id, '数据:', configData.value)
   currentConfig.value = configData.value
   editorVisible.value = true
 }
@@ -148,7 +148,7 @@ const handleEditorSubmit = async (config: TConfig) => {
   console.log('[ConfigList] 收到提交的配置:', config)
   console.log('[ConfigList] 当前配置名称:', currentConfig.value?.name)
   try {
-    await addOrUpdateConfig(config, currentConfig.value?.name)
+    await addOrUpdateConfig(config, currentConfig.value?.id)
     console.log('[ConfigList] 配置保存成功')
     messageStore.success(currentConfig.value?.name ? '配置更新成功' : '配置创建成功')
     editorVisible.value = false
@@ -158,23 +158,27 @@ const handleEditorSubmit = async (config: TConfig) => {
   }
 }
 
-const confirmDelete = async (name: string) => {
+const confirmDelete = async (config: TConfig) => {
+  if (!config?.id) {
+    messageStore.warning('缺少配置ID，无法删除')
+    return
+  }
   // 确保任务数据已加载，以检查配置是否被使用
   if (!taskStore.initialized) {
     console.log('[ConfigList] 删除配置前加载任务列表')
     await taskStore.fetchTasks()
   }
   
-  const usedBy = taskStore.tasks?.find(t => t.config === name)
+  const usedBy = taskStore.tasks?.find(t => (config.id && t.configId === config.id) || t.config === config.name)
   if (usedBy) {
     messageStore.warning(`无法删除：该配置被任务 "${usedBy.name}" 使用中`)
     return
   }
-  deleteDialog.value = { visible: true, name }
+  deleteDialog.value = { visible: true, id: config.id, name: config.name }
 }
 
 const handleDelete = async () => {
-  await rmItem(deleteDialog.value.name)
+  await rmItem(deleteDialog.value.id)
 }
 </script>
 

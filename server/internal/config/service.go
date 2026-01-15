@@ -11,11 +11,12 @@ import (
 )
 
 type Service struct {
-	store      *task.Store
-	tasks      []task.Task
-	configs    []task.Config
-	configsMap map[string]task.Config
-	mu         sync.RWMutex
+	store         *task.Store
+	tasks         []task.Task
+	configs       []task.Config
+	configsByID   map[int]task.Config
+	configsByName map[string]task.Config
+	mu            sync.RWMutex
 }
 
 func NewService() (*Service, error) {
@@ -35,9 +36,11 @@ func NewService() (*Service, error) {
 }
 
 func (s *Service) rebuildMap() {
-	s.configsMap = make(map[string]task.Config)
+	s.configsByID = make(map[int]task.Config)
+	s.configsByName = make(map[string]task.Config)
 	for _, c := range s.configs {
-		s.configsMap[c.Name] = c
+		s.configsByID[c.ID] = c
+		s.configsByName[c.Name] = c
 	}
 }
 
@@ -69,7 +72,11 @@ func (s *Service) save() error {
 		s.tasks = tasks // update local tasks
 	}
 
-	return s.store.Save(s.tasks, s.configs)
+	if err := s.store.Save(s.tasks, s.configs); err != nil {
+		return err
+	}
+	s.rebuildMap()
+	return nil
 }
 
 func (s *Service) GetAll() []task.Config {
@@ -84,12 +91,22 @@ func (s *Service) GetAll() []task.Config {
 func (s *Service) Get(name string) (task.Config, string, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	c, ok := s.configsMap[name]
+	c, ok := s.configsByName[name]
 	if !ok {
 		return task.Config{}, "", false
 	}
 
 	// Return config with JSON detail
+	return c, c.Detail, true
+}
+
+func (s *Service) GetByID(id int) (task.Config, string, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	c, ok := s.configsByID[id]
+	if !ok {
+		return task.Config{}, "", false
+	}
 	return c, c.Detail, true
 }
 
@@ -99,13 +116,26 @@ func (s *Service) GetParsed(name string) (ParsedConfig, bool) {
 	if !ok {
 		return ParsedConfig{}, false
 	}
+	return s.parseConfig(c.Detail)
+}
 
+// GetParsedByID returns parsed configuration by ID
+func (s *Service) GetParsedByID(id int) (ParsedConfig, bool) {
+	c, _, ok := s.GetByID(id)
+	if !ok {
+		return ParsedConfig{}, false
+	}
+	return s.parseConfig(c.Detail)
+}
+
+func (s *Service) parseConfig(detail string) (ParsedConfig, bool) {
 	// First, try to detect if this is old format by checking for nested structure
 	var rawConfig map[string]interface{}
-	if err := json.Unmarshal([]byte(c.Detail), &rawConfig); err != nil {
+	if err := json.Unmarshal([]byte(detail), &rawConfig); err != nil {
 		return ParsedConfig{}, false
 	}
 
+	// First, try to detect if this is old format by checking for nested structure
 	config := ParsedConfig{
 		KeepDirStruct: true, // defaults
 		OpenCache:     true,
@@ -160,7 +190,7 @@ func (s *Service) GetParsed(name string) (ParsedConfig, bool) {
 		}
 	} else {
 		// Try parsing as new flat format
-		if err := json.Unmarshal([]byte(c.Detail), &config); err != nil {
+		if err := json.Unmarshal([]byte(detail), &config); err != nil {
 			return ParsedConfig{}, false
 		}
 
@@ -332,7 +362,7 @@ func (s *Service) Add(c task.Config, detail string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, ok := s.configsMap[c.Name]; ok {
+	if _, ok := s.configsByName[c.Name]; ok {
 		return fmt.Errorf("config %s already exists", c.Name)
 	}
 
@@ -366,13 +396,13 @@ func (s *Service) Add(c task.Config, detail string) error {
 	return s.save()
 }
 
-func (s *Service) Update(prevName string, c task.Config, detail string) error {
+func (s *Service) UpdateByID(id int, c task.Config, detail string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	existing, ok := s.configsMap[prevName]
+	existing, ok := s.configsByID[id]
 	if !ok {
-		return fmt.Errorf("config %s does not exist", prevName)
+		return fmt.Errorf("config %d does not exist", id)
 	}
 
 	// First, try to unmarshal the detail as a JSON string (escaped)
@@ -400,19 +430,19 @@ func (s *Service) Update(prevName string, c task.Config, detail string) error {
 		existing.Detail = jsonDetail
 	}
 
-	existing.Name = c.Name
-	existing.Description = c.Description
-
 	// If name changed, check collision
-	if prevName != c.Name {
-		if _, ok := s.configsMap[c.Name]; ok {
+	if existing.Name != c.Name {
+		if other, ok := s.configsByName[c.Name]; ok && other.ID != id {
 			return fmt.Errorf("config %s already exists", c.Name)
 		}
 	}
 
+	existing.Name = c.Name
+	existing.Description = c.Description
+
 	// Update list
 	for i, conf := range s.configs {
-		if conf.Name == prevName {
+		if conf.ID == id {
 			s.configs[i] = existing
 			break
 		}
@@ -421,18 +451,18 @@ func (s *Service) Update(prevName string, c task.Config, detail string) error {
 	return s.save()
 }
 
-func (s *Service) Delete(name string) error {
+func (s *Service) Delete(id int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, ok := s.configsMap[name]; !ok {
-		return fmt.Errorf("config %s not found", name)
+	if _, ok := s.configsByID[id]; !ok {
+		return fmt.Errorf("config %d not found", id)
 	}
 
 	// Remove from list
 	var newConfigs []task.Config
 	for _, c := range s.configs {
-		if c.Name != name {
+		if c.ID != id {
 			newConfigs = append(newConfigs, c)
 		}
 	}
