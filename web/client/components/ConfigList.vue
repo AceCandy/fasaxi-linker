@@ -2,20 +2,20 @@
   <div>
     <v-card class="glass-card config-list-card fade-in" elevation="0">
       <!-- 卡片头部 -->
-      <v-card-title class="d-flex align-center py-6 px-8 dialog-header">
+      <v-card-title class="d-flex align-center py-6 px-8 dialog-header border-b border-neon">
         <div class="d-flex align-center">
           <div class="header-icon-box mr-4">
-            <v-icon icon="mdi-cog-outline" size="28" class="gradient-text"></v-icon>
+            <v-icon icon="mdi-cog-outline" size="28" class="text-primary"></v-icon>
           </div>
           <div>
-            <span class="text-h5 font-weight-bold text-grey-darken-3">配置管理</span>
-            <div class="text-subtitle-2 text-grey pt-1">管理您的硬链配置规则</div>
+            <span class="text-h5 font-weight-bold text-primary-glow font-display">配置管理</span>
+            <div class="text-subtitle-2 text-slate-400 font-mono mt-1">管理您的硬链配置规则</div>
           </div>
         </div>
         <v-spacer></v-spacer>
         <v-btn
           v-if="configStore.configs?.length"
-          class="gradient-btn rounded-pill px-6"
+          class="btn-neon px-6"
           prepend-icon="mdi-plus"
           height="44"
           @click="handleCreate"
@@ -24,17 +24,17 @@
         </v-btn>
       </v-card-title>
       
-      <v-divider class="border-opacity-50"></v-divider>
+      <v-divider class="border-neon opacity-20"></v-divider>
 
-      <v-card-text class="pa-8">
+      <v-card-text class="pa-8 bg-transparent">
         <!-- 空状态 -->
-        <div v-if="!configStore.configs?.length" class="empty-state d-flex flex-column align-center justify-center pa-16 text-center rounded-xl border-dashed">
+        <div v-if="!configStore.configs?.length" class="empty-state d-flex flex-column align-center justify-center pa-16 text-center rounded-xl border-dashed border-slate-700">
           <div class="empty-icon-container mb-6">
-            <v-icon size="64" color="grey-lighten-2">mdi-cog-off-outline</v-icon>
+            <v-icon size="64" color="primary" class="opacity-50">mdi-cog-off-outline</v-icon>
           </div>
-          <div class="text-h6 text-grey-darken-1 mb-2">暂无配置</div>
-          <div class="text-body-1 text-grey mb-8">创建一个配置来定义硬链规则</div>
-          <v-btn class="gradient-btn rounded-pill px-8" prepend-icon="mdi-plus" height="48" @click="handleCreate">
+          <div class="text-h6 text-slate-300 mb-2 font-display">暂无配置</div>
+          <div class="text-body-1 text-slate-500 mb-8 font-mono">创建一个配置来定义硬链规则</div>
+          <v-btn class="btn-neon px-8" prepend-icon="mdi-plus" height="48" @click="handleCreate">
             立即创建
           </v-btn>
         </div>
@@ -242,34 +242,36 @@ const confirmDelete = async (config: TConfig) => {
 <style scoped>
 .config-list-card {
   min-height: calc(100vh - 100px);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .header-icon-box {
   width: 56px;
   height: 56px;
-  background: white;
+  background: rgba(0, 240, 255, 0.1);
   border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  border: 1px solid rgba(0,0,0,0.05);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
+  border: 1px solid rgba(0, 240, 255, 0.2);
 }
 
 .empty-state {
-  background: rgba(255,255,255,0.5);
-  border-color: rgba(0,0,0,0.05);
+  background: rgba(15, 23, 42, 0.6);
+  border-color: rgba(0, 240, 255, 0.1);
 }
 
 .empty-icon-container {
   width: 100px;
   height: 100px;
-  background: white;
+  background: radial-gradient(circle, rgba(0, 240, 255, 0.1) 0%, transparent 70%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
 }
 
 .fade-in {
@@ -279,5 +281,19 @@ const confirmDelete = async (config: TConfig) => {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+.font-display {
+    font-family: 'Orbitron', sans-serif;
+}
+.font-mono {
+    font-family: 'Space Mono', monospace;
+}
+.border-neon {
+    border-color: rgba(0, 240, 255, 0.2) !important;
+}
+.border-b {
+    border-bottom-width: 1px;
+    border-style: solid;
 }
 </style>

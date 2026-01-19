@@ -1,102 +1,106 @@
 <template>
-  <v-card class="task-list-card rounded-xl fade-in">
-    <!-- 卡片头部 -->
-    <v-card-title class="d-flex align-center py-5 px-6 card-header">
-      <div class="d-flex align-center">
-        <div class="header-icon mr-3">
-          <v-icon icon="mdi-clipboard-check" size="24" color="white"></v-icon>
+  <div class="task-list-wrapper">
+    <v-card class="glass-card task-list-card fade-in" elevation="0">
+      <!-- 卡片头部 -->
+      <v-card-title class="d-flex align-center py-6 px-8 dialog-header border-b border-neon">
+        <div class="d-flex align-center">
+          <div class="header-icon-box mr-4">
+            <v-icon icon="mdi-clipboard-check-outline" size="28" class="text-primary"></v-icon>
+          </div>
+          <div>
+            <span class="text-h5 font-weight-bold text-primary-glow font-display">任务列表</span>
+            <div class="text-subtitle-2 text-slate-400 font-mono mt-1">管理您的硬链和同步任务</div>
+          </div>
         </div>
-        <div>
-          <span class="text-h6 font-weight-bold">任务列表</span>
-          <div class="text-caption text-grey">管理您的硬链和同步任务</div>
-        </div>
-      </div>
-      <v-spacer></v-spacer>
-      <v-btn
-        v-if="taskStore.tasks.length"
-        class="create-btn"
-        prepend-icon="mdi-plus"
-        @click="handleCreate"
-      >
-        创建任务
-      </v-btn>
-    </v-card-title>
-    
-    <v-divider></v-divider>
-    
-    <!-- 内容区域 - 允许页面滚动 -->
-    <v-card-text class="px-6 py-6">
-      <!-- 加载状态 -->
-      <div v-if="taskStore.loading" class="d-flex justify-center pa-8">
-        <v-progress-circular indeterminate color="primary" size="48" width="4"></v-progress-circular>
-      </div>
-
-      <!-- 空状态 -->
-      <div v-else-if="!taskStore.tasks.length" class="empty-state d-flex flex-column align-center justify-center pa-12 text-center">
-        <div class="empty-icon-container mb-6">
-          <v-icon size="72" color="grey-lighten-1" class="float-animation">mdi-clipboard-text-off-outline</v-icon>
-        </div>
-        <div class="text-h6 text-grey-darken-1 mb-2">暂无任务</div>
-        <div class="text-body-2 text-grey mb-6">创建您的第一个硬链任务开始使用</div>
-        <v-btn class="create-btn" prepend-icon="mdi-plus" size="large" @click="handleCreate">
-          立即创建
-        </v-btn>
-      </div>
-
-      <!-- 任务列表 -->
-      <v-row v-else>
-        <v-col
-          cols="12"
-          sm="6"
-          lg="4"
-          v-for="(item, index) in taskStore.tasks"
-          :key="item.name"
+        <v-spacer></v-spacer>
+        <v-btn
+          v-if="taskStore.tasks.length"
+          class="btn-neon px-6"
+          prepend-icon="mdi-plus"
+          height="44"
+          @click="handleCreate"
         >
-          <TaskItem
-            :data="item"
-            :index="index"
-            @edit="handleEdit"
-            @delete="handleDelete"
-            @play="handlePlay"
-            @set-schedule="handleSetSchedule"
-            @cancel-schedule="handleCancelSchedule"
-            @show-config="handleShowConfig"
-            @show-log="handleShowLog"
-            @show-cache="handleShowCache"
-            @watch-change="() => {}"
-          />
-        </v-col>
-      </v-row>
-    </v-card-text>
-  </v-card>
+          创建任务
+        </v-btn>
+      </v-card-title>
+      
+      <v-divider class="border-neon opacity-20"></v-divider>
+      
+      <!-- 内容区域 - 允许页面滚动 -->
+      <v-card-text class="pa-8 bg-transparent">
+        <!-- 加载状态 -->
+        <div v-if="taskStore.loading" class="d-flex justify-center align-center pa-16">
+          <v-progress-circular indeterminate color="primary" size="48" width="4"></v-progress-circular>
+          <span class="ml-4 text-slate-400 font-mono">加载中...</span>
+        </div>
 
-  <!-- Modals -->
-  <TaskLogViewer
-    v-if="logVisible"
-    v-model="logVisible"
-    :task-name="currentTaskName"
-  />
+        <!-- 空状态 -->
+        <div v-else-if="!taskStore.tasks.length" class="empty-state d-flex flex-column align-center justify-center pa-16 text-center rounded-xl border-dashed border-slate-700">
+          <div class="empty-icon-container mb-6">
+            <v-icon size="72" color="primary" class="opacity-50 float-animation">mdi-clipboard-text-off-outline</v-icon>
+          </div>
+          <div class="text-h6 text-slate-300 mb-2 font-display">暂无任务</div>
+          <div class="text-body-1 text-slate-500 mb-8 font-mono">创建您的第一个硬链任务开始使用</div>
+          <v-btn class="btn-neon px-8" prepend-icon="mdi-plus" height="48" @click="handleCreate">
+            立即创建
+          </v-btn>
+        </div>
 
-  <RunDetail
-    v-if="runVisible"
-    v-model="runVisible"
-    :name="currentTaskName"
-  />
+        <!-- 任务列表 -->
+        <v-row v-else>
+          <v-col
+            cols="12"
+            sm="6"
+            lg="4"
+            v-for="(item, index) in taskStore.tasks"
+            :key="item.name"
+          >
+            <TaskItem
+              :data="item"
+              :index="index"
+              @edit="handleEdit"
+              @delete="handleDelete"
+              @play="handlePlay"
+              @set-schedule="handleSetSchedule"
+              @cancel-schedule="handleCancelSchedule"
+              @show-config="handleShowConfig"
+              @show-log="handleShowLog"
+              @show-cache="handleShowCache"
+              @watch-change="() => {}"
+            />
+          </v-col>
+        </v-row>
+      </v-card-text>
+    </v-card>
 
-  <TaskEditor
-    ref="taskEditorRef"
-    v-if="editVisible"
-    v-model="editVisible"
-    :edit="currentTaskData"
-    @submit="handleTaskSubmit"
-  />
+    <!-- Modals -->
+    <TaskLogViewer
+      v-if="logVisible"
+      v-model="logVisible"
+      :task-name="currentTaskName"
+    />
 
-  <ConfigEditor
-    v-if="configEditorVisible"
-    v-model="configEditorVisible"
-    :data="currentConfigData"
-    @submit="handleConfigSubmit"
-  />
+    <RunDetail
+      v-if="runVisible"
+      v-model="runVisible"
+      :name="currentTaskName"
+    />
+
+    <TaskEditor
+      ref="taskEditorRef"
+      v-if="editVisible"
+      v-model="editVisible"
+      :edit="currentTaskData"
+      @submit="handleTaskSubmit"
+    />
+
+    <ConfigEditor
+      v-if="configEditorVisible"
+      v-model="configEditorVisible"
+      :data="currentConfigData"
+      @submit="handleConfigSubmit"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -273,73 +277,48 @@ const handleConfigSubmit = async (config: TConfig) => {
 
 <style scoped>
 .task-list-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  min-height: calc(100vh - 100px);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
-/* 页面渐入动画 */
-.fade-in {
-  animation: fadeInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
+/* Copied from ConfigList.vue for consistency */
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.card-header {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
-}
-
-.header-icon {
-  width: 44px;
-  height: 44px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
+.header-icon-box {
+  width: 56px;
+  height: 56px;
+  background: rgba(0, 240, 255, 0.1);
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-}
-
-.create-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  color: white !important;
-  border: none !important;
-  border-radius: 10px !important;
-  font-weight: 600 !important;
-  padding: 0 24px !important;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3) !important;
-  transition: all 0.3s ease !important;
-}
-
-.create-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4) !important;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
+  border: 1px solid rgba(0, 240, 255, 0.2);
 }
 
 .empty-state {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
-  border-radius: 16px;
-  border: 2px dashed rgba(102, 126, 234, 0.2);
+  background: rgba(15, 23, 42, 0.6);
+  border-color: rgba(0, 240, 255, 0.1);
 }
 
 .empty-icon-container {
-  width: 120px;
-  height: 120px;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle, rgba(0, 240, 255, 0.1) 0%, transparent 70%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .float-animation {
@@ -347,11 +326,21 @@ const handleConfigSubmit = async (config: TConfig) => {
 }
 
 @keyframes float {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.font-display {
+    font-family: 'Orbitron', sans-serif;
+}
+.font-mono {
+    font-family: 'Space Mono', monospace;
+}
+.border-neon {
+    border-color: rgba(0, 240, 255, 0.2) !important;
+}
+.border-b {
+    border-bottom-width: 1px;
+    border-style: solid;
 }
 </style>

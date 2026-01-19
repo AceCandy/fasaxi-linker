@@ -1,18 +1,18 @@
 <template>
-  <v-layout class="rounded rounded-md h-screen app-layout">
+  <v-layout class="h-screen app-background">
     <!-- 渐变模糊导航栏 -->
-    <v-app-bar :elevation="0" class="app-nav-bar">
+    <v-app-bar :elevation="0" class="app-nav-bar border-neon">
       <!-- Logo 和标题区域 -->
       <div class="header-logo-section">
         <div class="logo-container">
           <img src="/logo.jpg" alt="Linker Logo" class="app-logo" />
         </div>
-        <span class="app-title">Linker</span>
+        <span class="app-title text-primary-glow">Linker</span>
       </div>
       
       <v-spacer></v-spacer>
 
-      <div class="nav-items">
+      <div class="nav-items text-slate-300">
         <v-btn 
           to="/" 
           prepend-icon="mdi-format-list-bulleted"
@@ -32,12 +32,12 @@
           <template v-slot:activator="{ props }">
             <v-btn icon="mdi-dots-vertical" v-bind="props" variant="text" class="nav-btn ml-1"></v-btn>
           </template>
-          <v-list class="glass-menu rounded-xl" elevation="0">
+          <v-list class="glass-menu" elevation="0">
             <v-list-item href="https://github.com/likun7981/hlink" target="_blank" prepend-icon="mdi-github" class="menu-item-hover">
-              <v-list-item-title>Github</v-list-item-title>
+              <v-list-item-title class="font-mono">Github</v-list-item-title>
             </v-list-item>
             <v-list-item href="https://hlink.likun.me" target="_blank" prepend-icon="mdi-book-open-variant" class="menu-item-hover">
-              <v-list-item-title>文档</v-list-item-title>
+              <v-list-item-title class="font-mono">文档</v-list-item-title>
             </v-list-item>
           </v-list>
         </v-menu>
@@ -65,23 +65,14 @@ const $route = useRoute()
 </script>
 
 <style scoped>
-.app-layout {
-  background: #f0f2f5; /* Fallback */
-  background: linear-gradient(135deg, #f3f5f9 0%, #eef2f7 100%);
-}
-
 /* Glassmorphism Header */
 .app-nav-bar {
-  background: rgba(255, 255, 255, 0.8) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
-  height: 80px !important;
+  /* Using global variable in style.css, but adding specific override here if needed */
 }
 
 .app-nav-bar :deep(.v-toolbar__content) {
   padding: 0 32px;
-  height: 80px;
+  height: 72px;
 }
 
 .header-logo-section {
@@ -91,21 +82,23 @@ const $route = useRoute()
 }
 
 .logo-container {
-  width: 44px;
-  height: 44px;
-  background: white;
-  border-radius: 14px;
+  width: 40px;
+  height: 40px;
+  background: rgba(15, 23, 42, 0.8);
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  box-shadow: 0 8px 24px -6px rgba(102, 126, 234, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+  border: 1px solid rgba(0, 240, 255, 0.3);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .logo-container:hover {
-  transform: rotate(-5deg) scale(1.05);
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+  border-color: #00F0FF;
 }
 
 .app-logo {
@@ -115,12 +108,10 @@ const $route = useRoute()
 }
 
 .app-title {
+  font-family: 'Orbitron', sans-serif;
   font-size: 1.5rem;
-  font-weight: 800;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: -0.5px;
+  font-weight: 700;
+  letter-spacing: 1px;
 }
 
 /* Nav Buttons */
@@ -128,50 +119,41 @@ const $route = useRoute()
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(0, 0, 0, 0.03);
-  padding: 4px;
-  border-radius: 12px;
 }
 
 .nav-btn {
-  color: #64748b !important;
+  color: rgba(224, 242, 247, 0.6) !important; /* Sky 100 with opacity */
+  font-family: 'Space Mono', monospace;
   font-weight: 600;
-  border-radius: 10px !important;
-  height: 40px !important;
-  letter-spacing: 0.3px;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  height: 36px !important;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease !important;
+  border: 1px solid transparent !important;
 }
 
 .nav-btn:hover {
-  background: rgba(0, 0, 0, 0.04) !important;
-  color: #1e293b !important;
+  background: rgba(0, 240, 255, 0.05) !important;
+  color: #00F0FF !important;
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
 }
 
 .nav-btn-active {
-  background: white !important;
-  color: #667eea !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  background: rgba(0, 240, 255, 0.1) !important;
+  color: #00F0FF !important;
+  border: 1px solid rgba(0, 240, 255, 0.3) !important;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.1);
+  text-shadow: 0 0 5px rgba(0, 240, 255, 0.5);
 }
 
-/* Glass Menu */
-.glass-menu {
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(24px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 20px 40px -4px rgba(0, 0, 0, 0.1) !important;
-  padding: 8px;
-  overflow: visible !important;
-}
-
+/* Menu Items */
 .menu-item-hover {
-  border-radius: 8px;
+  color: #E0F2F7 !important;
   transition: all 0.2s ease;
-  margin-bottom: 2px;
 }
 
 .menu-item-hover:hover {
-  background: rgba(102, 126, 234, 0.08) !important;
-  color: #667eea !important;
+  background: rgba(0, 240, 255, 0.1) !important;
+  color: #00F0FF !important;
 }
 
 .main-content {
@@ -181,35 +163,18 @@ const $route = useRoute()
 /* Page Transition */
 .page-fade-enter-active,
 .page-fade-leave-active {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .page-fade-enter-from {
   opacity: 0;
-  transform: translateY(10px) scale(0.99);
+  transform: translateY(10px);
+  filter: blur(4px);
 }
 
 .page-fade-leave-to {
   opacity: 0;
-  transform: translateY(-10px) scale(0.99);
-}
-
-/* Global Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.2);
+  transform: translateY(-10px);
+  filter: blur(4px);
 }
 </style>

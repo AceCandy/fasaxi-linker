@@ -142,7 +142,6 @@ func createTables(ctx context.Context) error {
 	CREATE TABLE IF NOT EXISTS configs (
 		id SERIAL PRIMARY KEY,
 		name VARCHAR(255) UNIQUE NOT NULL,
-		description TEXT DEFAULT '',
 		detail JSONB NOT NULL DEFAULT '{}'::jsonb,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -213,6 +212,10 @@ func createTables(ctx context.Context) error {
 		IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'configs' AND column_name = 'id') THEN
 			ALTER TABLE configs ADD COLUMN id SERIAL;
 		END IF;
+		-- configs table: drop description column if present
+		IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'configs' AND column_name = 'description') THEN
+			ALTER TABLE configs DROP COLUMN description;
+		END IF;
 		-- configs primary key on id
 		IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_name = 'configs' AND constraint_type = 'PRIMARY KEY' AND constraint_name = 'configs_pkey') THEN
 			ALTER TABLE configs DROP CONSTRAINT configs_pkey;
@@ -279,7 +282,6 @@ func createTables(ctx context.Context) error {
 	COMMENT ON TABLE configs IS '配置表';
 	COMMENT ON COLUMN configs.id IS '配置ID';
 	COMMENT ON COLUMN configs.name IS '配置名称';
-	COMMENT ON COLUMN configs.description IS '配置描述';
 	COMMENT ON COLUMN configs.detail IS '配置详情（JSON）';
 	COMMENT ON COLUMN configs.created_at IS '创建时间';
 	COMMENT ON COLUMN configs.updated_at IS '更新时间';

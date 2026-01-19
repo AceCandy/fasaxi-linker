@@ -68,7 +68,6 @@
   "data": [
     {
       "name": "config1",
-      "description": "示例配置",
       "detail": "配置详细内容"
     }
   ]
@@ -102,7 +101,6 @@
   "success": true,
   "data": {
     "name": "config1",
-    "description": "示例配置",
     "detail": "配置详细内容"
   }
 }
@@ -141,7 +139,6 @@
 ```json
 {
   "name": "new-config",
-  "description": "新配置描述",
   "detail": "配置详细内容"
 }
 ```
@@ -163,7 +160,6 @@
 {
   "preName": "old-config-name",
   "name": "new-config-name",
-  "description": "更新的描述",
   "detail": "更新的配置内容"
 }
 ```
@@ -571,9 +567,8 @@ data: {"status":"failed","type":"main","output":"Error: 处理失败"}
 
 ```json
 {
-  "name": "string",         // 配置名称
-  "description": "string",  // 配置描述
-  "detail": "string"        // 配置详细内容（JavaScript代码）
+  "name": "string",   // 配置名称
+  "detail": "string"  // 配置详细内容（JavaScript代码）
 }
 ```
 

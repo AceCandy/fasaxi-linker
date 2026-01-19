@@ -1,19 +1,19 @@
 <template>
-  <v-dialog v-model="isOpen" max-width="750" persistent>
-    <v-card class="editor-card">
+  <v-dialog v-model="isOpen" max-width="750" persistent class="glass-dialog">
+    <v-card class="editor-card glass-content-card border-neon">
       <!-- 头部 -->
-      <div class="editor-header">
+      <div class="editor-header border-b border-neon">
         <div class="header-content">
           <div class="header-icon">
-            <v-icon icon="mdi-cog-outline" size="18" color="white"></v-icon>
+            <v-icon icon="mdi-cog-outline" size="18" class="text-primary"></v-icon>
           </div>
           <div>
-            <div class="header-title">{{ data ? `编辑配置` : '创建新配置' }}</div>
-            <div v-if="data" class="header-subtitle">{{ data.name }}</div>
+            <div class="header-title font-display text-primary-glow">{{ data ? `编辑配置` : '创建新配置' }}</div>
+            <div v-if="data" class="header-subtitle font-mono text-slate-400">{{ data.name }}</div>
           </div>
         </div>
         <button class="close-btn" @click="isOpen = false">
-          <v-icon icon="mdi-close" size="18"></v-icon>
+          <v-icon icon="mdi-close" size="18" class="text-slate-400 hover:text-white"></v-icon>
         </button>
       </div>
 
@@ -21,8 +21,8 @@
       <v-card-text class="editor-content">
         <v-form ref="form" v-model="valid" @submit.prevent="handleSubmit">
           <!-- 基本信息区域 -->
-          <div class="form-section">
-            <div class="section-title mb-2">
+          <div class="form-section border border-slate-700 bg-slate-900/50">
+            <div class="section-title mb-2 text-primary font-display">
               基本信息
             </div>
             
@@ -38,27 +38,15 @@
               density="compact"
               prepend-inner-icon="mdi-tag-outline"
               hide-details="auto"
+              bg-color="transparent"
             ></v-text-field>
 
-            <!-- 描述字段 -->
-            <v-textarea
-              v-model="formData.description"
-              label="配置描述"
-              placeholder="请输入配置描述（可选，最多100字）"
-              variant="outlined"
-              :rules="[v => !v || v.length <= 100 || '描述不能超过100个字符']"
-              rows="2"
-              auto-grow
-              density="compact"
-              prepend-inner-icon="mdi-text"
-              counter="100"
-              hide-details="auto"
-            ></v-textarea>
+
           </div>
 
           <!-- 配置规则区域 -->
-          <div class="form-section">
-            <div class="section-title mb-2 d-flex align-center justify-space-between">
+          <div class="form-section border border-slate-700 bg-slate-900/50">
+            <div class="section-title mb-2 d-flex align-center justify-space-between text-primary font-display">
               <span>配置规则</span>
               <v-btn 
                 v-if="data"
@@ -66,7 +54,8 @@
                 size="x-small" 
                 @click="resetToDefault"
                 prepend-icon="mdi-restore"
-                color="grey-darken-1"
+                color="secondary"
+                class="opacity-70 hover:opacity-100"
               >
                 还原
               </v-btn>
@@ -81,13 +70,15 @@
       </v-card-text>
 
       <!-- 底部操作区域 -->
-      <div class="editor-footer">
-        <v-btn variant="text" size="default" @click="isOpen = false">取消</v-btn>
+      <div class="editor-footer border-t border-neon bg-slate-900/80">
+        <v-btn variant="text" size="default" color="grey" @click="isOpen = false" class="font-mono">取消</v-btn>
         <v-btn 
-          class="submit-btn"
+          class="submit-btn btn-neon ml-2"
           size="default"
           @click="handleSubmit" 
           :disabled="!valid"
+          variant="tonal"
+          color="primary"
         >
           <v-icon icon="mdi-check" size="18" class="mr-1"></v-icon>
           {{ data ? '保存' : '创建' }}
@@ -123,8 +114,8 @@ const form = ref<any>(null)
 
 const formData = ref({
   name: '',
-  description: '',
   detail: defaultConfig.get()
+
 })
 
 const visualData = ref<any>({})
@@ -213,8 +204,8 @@ const handleSubmit = async () => {
     console.log('[ConfigEditor] 生成的配置对象（新格式）:', detailObject)
 
     const payload = props.data 
-      ? { id: props.data.id, name: props.data.name, description: formData.value.description, detail: detailObject } 
-      : { name: formData.value.name, description: formData.value.description, detail: detailObject }
+      ? { id: props.data.id, name: props.data.name, detail: detailObject } 
+      : { name: formData.value.name, detail: detailObject }
     
     console.log('[ConfigEditor] 准备提交的数据:', payload)
     emit('submit', payload as unknown as TConfig)
@@ -271,14 +262,14 @@ watch(() => props.modelValue, (val) => {
       const detailString = convertDetailToString(props.data.detail)
       formData.value = {
         name: props.data.name,
-        description: props.data.description || '',
+
         detail: detailString
       }
       console.log('[ConfigEditor] 初始化表单数据:', formData.value)
     } else {
       formData.value = {
         name: '',
-        description: '',
+
         detail: defaultConfig.get()
       }
     }
@@ -294,7 +285,7 @@ watch(() => props.data, (newData) => {
     const detailString = convertDetailToString(newData.detail)
     formData.value = {
       name: newData.name,
-      description: newData.description || '',
+
       detail: detailString
     }
     syncCodeToVisual()
@@ -303,19 +294,21 @@ watch(() => props.data, (newData) => {
 </script>
 
 <style scoped>
-.editor-card {
-  border-radius: 16px;
+.glass-content-card {
+  background: rgba(15, 23, 42, 0.95) !important;
+  backdrop-filter: blur(20px) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 0 50px rgba(0, 240, 255, 0.15) !important;
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  color: #E0F2F7;
 }
 
 .editor-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  padding: 16px 20px;
+  background: linear-gradient(to right, rgba(15, 23, 42, 0.8), rgba(0, 0, 0, 0.6));
 }
 
 .header-content {
@@ -330,18 +323,20 @@ watch(() => props.data, (newData) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
+  background: rgba(0, 240, 255, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
 }
 
 .header-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .header-subtitle {
   font-size: 11px;
-  opacity: 0.9;
+  opacity: 0.7;
   margin-top: 2px;
 }
 
@@ -352,51 +347,32 @@ watch(() => props.data, (newData) => {
   align-items: center;
   justify-content: center;
   border: none;
-  background: rgba(255, 255, 255, 0.1);
+  background: transparent;
   border-radius: 6px;
-  color: white;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .editor-content {
-  padding: 16px !important;
+  padding: 20px !important;
 }
 
-.editor-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 12px 16px;
-  background: #fafafa;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+/* 顶部/底部边框 */
+.border-neon {
+  border-color: rgba(0, 240, 255, 0.3) !important;
 }
-
-.submit-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  color: white !important;
-  font-weight: 600 !important;
-  border-radius: 8px !important;
-  text-transform: none !important;
-  letter-spacing: 0 !important;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3) !important;
-}
-
-.submit-btn:hover {
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4) !important;
+.border-slate-700 {
+    border-color: rgba(51, 65, 85, 0.5) !important;
 }
 
 .form-section {
-  border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  background-color: #fafafa;
-  padding: 12px;
-  margin-bottom: 12px;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
 }
 
 .form-section:last-child {
@@ -404,11 +380,10 @@ watch(() => props.data, (newData) => {
 }
 
 .section-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: #667eea;
+  font-size: 12px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -423,8 +398,8 @@ watch(() => props.data, (newData) => {
 
 .code-editor-wrapper {
   flex: 1;
-  border-color: rgba(0, 0, 0, 0.12);
-  background-color: #1e1e1e;
+  border-color: rgba(51, 65, 85, 0.5);
+  background-color: rgba(15, 23, 42, 0.5);
   overflow: hidden;
   min-height: 400px;
 }
@@ -433,9 +408,41 @@ watch(() => props.data, (newData) => {
   flex: 1;
 }
 
-/* 优化表单字段间距 */
-:deep(.v-field) {
-  margin-bottom: 0;
+/* 字体工具 */
+.font-display {
+  font-family: 'Orbitron', sans-serif;
+}
+.font-mono {
+  font-family: 'Space Mono', monospace;
+}
+
+/* Input Styles Override */
+:deep(.v-field__outline__start),
+:deep(.v-field__outline__end),
+:deep(.v-field__outline__notch) {
+  border-color: rgba(51, 65, 85, 0.5) !important;
+}
+
+:deep(.v-field:hover .v-field__outline__start),
+:deep(.v-field:hover .v-field__outline__end),
+:deep(.v-field:hover .v-field__outline__notch) {
+  border-color: rgba(0, 240, 255, 0.5) !important;
+}
+
+:deep(.v-field--focused .v-field__outline__start),
+:deep(.v-field--focused .v-field__outline__end),
+:deep(.v-field--focused .v-field__outline__notch) {
+  border-color: #00F0FF !important;
+  box-shadow: 0 0 5px rgba(0, 240, 255, 0.2);
+}
+
+:deep(.v-field__input) {
+  color: #E0F2F7 !important;
+  font-family: 'Space Mono', monospace;
+}
+
+:deep(.v-label) {
+  color: rgba(148, 163, 184, 0.8) !important;
 }
 
 /* 优化按钮图标间距 */

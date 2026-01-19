@@ -1,23 +1,22 @@
 <template>
-  <TaskList @show-cache="handleShowCache" />
+  <div>
+    <TaskList @show-cache="handleShowCache" />
     
     <!-- 缓存管理弹窗 -->
     <v-dialog v-if="cacheVisible" v-model="cacheVisible" max-width="640" class="glass-dialog">
-      <v-card class="glass-content-card">
+      <v-card class="glass-content-card border-neon">
         <!-- 头部 -->
-        <div class="dialog-header">
+        <div class="dialog-header border-b border-neon">
           <div class="header-icon-box">
             <v-icon icon="mdi-database" color="primary" size="24"></v-icon>
           </div>
           <div>
-            <div class="text-h6 font-weight-bold text-grey-darken-3">缓存管理</div>
-            <div class="text-caption text-grey">{{ currentTask?.name }}</div>
+            <div class="text-h6 font-weight-bold text-primary font-display">缓存管理</div>
+            <div class="text-caption text-slate-400 font-mono">{{ currentTask?.name }}</div>
           </div>
           <v-spacer></v-spacer>
           <v-btn icon="mdi-close" variant="text" density="comfortable" @click="cacheVisible = false" color="grey"></v-btn>
         </div>
-        
-        <v-divider class="border-opacity-50"></v-divider>
         
         <v-card-text class="pa-6">
           <!-- 缓存说明 -->
@@ -25,12 +24,12 @@
             color="primary"
             variant="tonal"
             density="compact"
-            class="mb-6 rounded-lg border-0 bg-blue-grey-lighten-5"
+            class="mb-6 rounded-lg border border-primary/20 bg-primary/5"
           >
             <template v-slot:prepend>
               <v-icon icon="mdi-information-outline" color="primary"></v-icon>
             </template>
-            <div class="text-body-2 text-grey-darken-2">
+            <div class="text-body-2 text-slate-300 font-mono">
               缓存记录了已创建硬链的源文件路径。清空缓存后，下次执行将重新处理这些文件。
             </div>
           </v-alert>
@@ -38,15 +37,15 @@
           <!-- 加载状态 -->
           <div v-if="cacheLoading" class="d-flex justify-center align-center py-12">
             <v-progress-circular indeterminate color="primary" size="32"></v-progress-circular>
-            <span class="ml-3 text-grey font-weight-medium">加载中...</span>
+            <span class="ml-3 text-slate-400 font-weight-medium font-mono">加载中...</span>
           </div>
 
           <!-- 缓存文件列表 -->
           <div v-else>
             <div class="d-flex align-center justify-space-between mb-4">
-              <div class="text-subtitle-2 font-weight-bold text-grey-darken-3 d-flex align-center">
+              <div class="text-subtitle-2 font-weight-bold text-slate-300 d-flex align-center font-display">
                 已缓存文件
-                <span class="px-2 py-0.5 ml-2 bg-grey-lighten-3 text-caption rounded-pill text-grey-darken-1">{{ cacheFiles.length }}</span>
+                <span class="px-2 py-0.5 ml-2 bg-primary/10 text-caption rounded-pill text-primary font-mono">{{ cacheFiles.length }}</span>
               </div>
               <v-text-field
                 v-if="cacheFiles.length > 0"
@@ -56,30 +55,30 @@
                 variant="outlined"
                 density="compact"
                 hide-details
-                bg-color="white"
-                class="search-input"
+                bg-color="rgba(15, 23, 42, 0.5)"
+                class="search-input font-mono"
                 style="max-width: 220px"
               ></v-text-field>
             </div>
 
-            <div v-if="cacheFiles.length === 0" class="empty-state text-center py-12 rounded-xl border-dashed">
+            <div v-if="cacheFiles.length === 0" class="empty-state text-center py-12 rounded-xl border-dashed border-slate-700">
               <div class="icon-circle mb-3 mx-auto">
-                <v-icon icon="mdi-database-off-outline" size="32" color="grey-lighten-1"></v-icon>
+                <v-icon icon="mdi-database-off-outline" size="32" color="slate-500"></v-icon>
               </div>
-              <div class="text-body-2 text-grey-darken-1 font-weight-medium">暂无缓存记录</div>
-              <div class="text-caption text-grey-lighten-1 mt-1">执行任务后，已硬链的文件路径将显示在这里</div>
+              <div class="text-body-2 text-slate-400 font-weight-medium font-mono">暂无缓存记录</div>
+              <div class="text-caption text-slate-600 mt-1 font-mono">执行任务后，已硬链的文件路径将显示在这里</div>
             </div>
 
-            <div v-else class="cache-list custom-scrollbar">
+            <div v-else class="cache-list custom-scrollbar bg-slate-900/50 border border-slate-700">
               <div 
                 v-for="(item, index) in displayedFiles" 
                 :key="item" 
-                class="cache-item"
+                class="cache-item border-b border-slate-800 hover:bg-white/5"
               >
                 <div class="d-flex align-center w-100">
-                  <span class="index-badge mr-3">{{ index + 1 }}</span>
+                  <span class="index-badge mr-3 text-slate-500 font-mono">{{ index + 1 }}</span>
                   <v-icon icon="mdi-file-link-outline" size="16" color="primary" class="mr-3 opacity-60"></v-icon>
-                  <span class="text-body-2 text-truncate flex-grow-1 text-grey-darken-3 font-mono" :title="item">{{ item }}</span>
+                  <span class="text-body-2 text-truncate flex-grow-1 text-slate-300 font-mono" :title="item">{{ item }}</span>
                   <v-btn 
                     icon 
                     size="x-small" 
@@ -94,31 +93,31 @@
                 </div>
               </div>
               
-              <div v-if="filteredFiles.length > maxDisplay" class="text-caption text-grey text-center py-3 border-t">
+              <div v-if="filteredFiles.length > maxDisplay" class="text-caption text-slate-500 text-center py-3 border-t border-slate-800 font-mono">
                 显示前 {{ maxDisplay }} 条，共 {{ filteredFiles.length }} 条记录
               </div>
             </div>
           </div>
         </v-card-text>
         
-        <v-divider class="border-opacity-50"></v-divider>
+        <v-divider class="border-neon opacity-20"></v-divider>
         
-        <v-card-actions class="pa-5 bg-grey-lighten-5">
+        <v-card-actions class="pa-5 bg-black/20">
           <v-btn
             variant="text"
-            color="grey-darken-1"
+            color="grey"
             prepend-icon="mdi-refresh"
             @click="loadCache"
             :loading="cacheLoading"
-            class="action-btn"
+            class="action-btn font-mono"
           >
             刷新
           </v-btn>
           <v-spacer></v-spacer>
           <v-btn
             variant="text"
-            color="grey-darken-1"
-            class="action-btn mr-2"
+            color="grey"
+            class="action-btn mr-2 font-mono"
             @click="cacheVisible = false"
           >
             关闭
@@ -126,11 +125,11 @@
           <v-btn 
             v-if="cacheFiles.length > 0"
             color="error" 
-            variant="flat"
+            variant="text"
             prepend-icon="mdi-delete-sweep-outline" 
             :loading="clearLoading"
             @click="handleClearAll"
-            class="action-btn elevation-2"
+            class="action-btn font-mono"
           >
             全部清空
           </v-btn>
@@ -158,11 +157,12 @@
       rounded="pill"
       elevation="4"
     >
-      <div class="d-flex justify-center align-center">
+      <div class="d-flex justify-center align-center font-mono">
         <v-icon :icon="snackbar.color === 'success' ? 'mdi-check-circle' : 'mdi-alert-circle'" class="mr-2"></v-icon>
         {{ snackbar.text }}
       </div>
     </v-snackbar>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -208,12 +208,12 @@ const showDialog = (type: DialogType, payload?: any) => {
   
   if (type === 'delete_single') {
     dialogState.title = '确认删除'
-    dialogState.content = `确定要删除此缓存项吗？<br><div class="text-body-2 text-grey bg-grey-lighten-5 pa-2 mt-2 rounded" style="word-break: break-all;">${payload}</div>`
+    dialogState.content = `确定要删除此缓存项吗？<br><div class="text-body-2 text-slate-300 bg-slate-800 pa-2 mt-2 rounded border border-slate-700 font-mono" style="word-break: break-all;">${payload}</div>`
     dialogState.type = 'error'
     dialogState.confirmText = '删除'
   } else if (type === 'clear_all') {
     dialogState.title = '确认清空'
-    dialogState.content = `确定要清空所有 <strong class="text-error">${cacheFiles.value.length}</strong> 条缓存吗？<br><span class="text-caption text-grey">此操作不可撤销，清空后下次执行任务将重新处理这些文件。</span>`
+    dialogState.content = `确定要清空所有 <strong class="text-error">${cacheFiles.value.length}</strong> 条缓存吗？<br><span class="text-caption text-slate-400">此操作不可撤销，清空后下次执行任务将重新处理这些文件。</span>`
     dialogState.type = 'error'
     dialogState.confirmText = '清空'
   }
@@ -384,11 +384,12 @@ watch(cacheVisible, (val) => {
 
 <style scoped>
 .glass-content-card {
-  background: rgba(255, 255, 255, 0.95) !important;
+  background: rgba(15, 23, 42, 0.95) !important;
   backdrop-filter: blur(20px) !important;
   border-radius: 20px !important;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.1) !important;
+  box-shadow: 0 0 40px rgba(0, 240, 255, 0.1) !important;
   overflow: hidden;
+  color: #E0F2F7;
 }
 
 .dialog-header {
@@ -396,49 +397,24 @@ watch(cacheVisible, (val) => {
   align-items: center;
   padding: 20px 24px;
   gap: 12px;
-  background: linear-gradient(to right, rgba(255,255,255,0.95), rgba(255,255,255,0.8));
+  background: linear-gradient(to right, rgba(15, 23, 42, 0.95), rgba(0, 0, 0, 0.8));
 }
 
 .header-icon-box {
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: rgba(102, 126, 234, 0.1);
+  background: rgba(0, 240, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.cache-list {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  overflow: hidden;
-  max-height: 400px;
-  overflow-y: auto;
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
 }
 
 .cache-item {
   padding: 10px 16px;
-  border-bottom: 1px solid #f1f5f9;
   transition: all 0.2s;
   cursor: default;
-}
-
-.cache-item:last-child {
-  border-bottom: none;
-}
-
-.cache-item:hover {
-  background: #f8fafc;
-}
-
-.index-badge {
-  color: #94a3b8;
-  font-size: 11px;
-  font-weight: 600;
-  min-width: 24px;
 }
 
 .delete-btn {
@@ -450,20 +426,15 @@ watch(cacheVisible, (val) => {
   opacity: 1;
 }
 
-.empty-state {
-  background: #f8fafc;
-  border: 1px dashed #e2e8f0;
-}
-
 .icon-circle {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: white;
+  background: rgba(30, 41, 59, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
 }
 
 /* Custom Scrollbar */
@@ -474,14 +445,25 @@ watch(cacheVisible, (val) => {
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 3px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: rgba(0, 240, 255, 0.4);
 }
 
+.font-display {
+    font-family: 'Orbitron', sans-serif;
+}
 .font-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-family: 'Space Mono', monospace;
+}
+
+.border-neon {
+    border-color: rgba(0, 240, 255, 0.3) !important;
+}
+
+:deep(.v-field__input) {
+    color: #E0F2F7 !important;
 }
 </style>

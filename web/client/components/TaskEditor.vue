@@ -1,16 +1,16 @@
 <template>
-  <v-dialog v-model="isOpen" max-width="750" scrollable persistent>
-    <v-card class="editor-card">
+  <v-dialog v-model="isOpen" max-width="750" scrollable persistent class="glass-dialog">
+    <v-card class="editor-card glass-content-card border-neon">
       <!-- 头部 -->
-      <div class="editor-header">
+      <div class="editor-header border-b border-neon">
         <div class="header-content">
           <div class="header-icon">
-            <v-icon icon="mdi-file-document-edit" size="18" color="white"></v-icon>
+            <v-icon icon="mdi-file-document-edit" size="18" class="text-primary"></v-icon>
           </div>
-          <span class="header-title">{{ isEdit ? `编辑${typeText}任务` : `创建${typeText}任务` }}</span>
+          <span class="header-title font-display text-primary-glow">{{ isEdit ? `编辑${typeText}任务` : `创建${typeText}任务` }}</span>
         </div>
         <button class="close-btn" @click="isOpen = false">
-          <v-icon icon="mdi-close" size="18"></v-icon>
+          <v-icon icon="mdi-close" size="18" class="text-slate-400 hover:text-white"></v-icon>
         </button>
       </div>
 
@@ -18,8 +18,8 @@
       <v-card-text class="editor-content" style="max-height: 500px;">
         <v-form ref="form" v-model="valid" @submit.prevent="handleSubmit">
           <!-- 基本信息区域 -->
-          <div class="form-section">
-            <div class="section-title mb-2">基本信息</div>
+          <div class="form-section border border-slate-700 bg-slate-900/50">
+            <div class="section-title mb-2 text-primary font-display">基本信息</div>
             
             <v-text-field
               v-model="formData.name"
@@ -31,6 +31,7 @@
               class="mb-2"
               density="compact"
               hide-details="auto"
+              bg-color="transparent"
             ></v-text-field>
 
             <v-row class="mb-0" dense>
@@ -45,6 +46,7 @@
                   :rules="[v => !!v || '必须选择任务类型']"
                   density="compact"
                   hide-details="auto"
+                  bg-color="transparent"
                 ></v-select>
               </v-col>
               <v-col cols="12" sm="6">
@@ -59,9 +61,10 @@
                   :loading="configStore.loading"
                   density="compact"
                   hide-details="auto"
+                  bg-color="transparent"
                 >
                   <template v-slot:item="{ props, item }">
-                    <v-list-item v-bind="props" :subtitle="item.raw.description"></v-list-item>
+                    <v-list-item v-bind="props" class="hover:bg-primary/20"></v-list-item>
                   </template>
                 </v-select>
               </v-col>
@@ -69,23 +72,24 @@
           </div>
 
           <!-- 路径映射区域 -->
-          <div class="form-section">
-            <div class="section-title d-flex align-center justify-space-between mb-2">
+          <div class="form-section border border-slate-700 bg-slate-900/50">
+            <div class="section-title d-flex align-center justify-space-between mb-2 text-primary font-display">
               <span>路径映射</span>
               <v-chip 
                 size="x-small" 
-                color="grey-lighten-1" 
+                color="primary" 
                 variant="tonal"
+                class="font-mono bg-primary/10"
               >
                 {{ formData.pathsMapping?.length || 0 }}
               </v-chip>
             </div>
             
-            <div class="mappings-container">
+            <div class="mappings-container custom-scrollbar">
               <div 
                 v-for="(mapping, index) in formData.pathsMapping" 
                 :key="index" 
-                class="mapping-item d-flex align-start gap-2 mb-2 pa-2 border rounded-lg"
+                class="mapping-item d-flex align-start gap-2 mb-2 pa-2 border rounded-lg border-slate-700 bg-slate-800/50"
                 :class="{ 'last-item': index === ((formData.pathsMapping?.length || 0) - 1) }"
               >
                 <div class="flex-grow-1 mapping-fields">
@@ -98,9 +102,10 @@
                       :rules="[v => !!v || '请输入源路径']"
                       hide-details="auto"
                       class="flex-grow-1"
+                      bg-color="transparent"
                     >
                       <template v-slot:prepend-inner>
-                        <v-icon size="16" color="grey">mdi-folder-open</v-icon>
+                        <v-icon size="16" color="primary" class="opacity-70">mdi-folder-open</v-icon>
                       </template>
                     </v-text-field>
                     
@@ -112,9 +117,10 @@
                       :rules="[v => !!v || '请输入目标路径']"
                       hide-details="auto"
                       class="flex-grow-1"
+                      bg-color="transparent"
                     >
                       <template v-slot:prepend-inner>
-                        <v-icon size="16" color="grey">mdi-folder-move</v-icon>
+                        <v-icon size="16" color="primary" class="opacity-70">mdi-folder-move</v-icon>
                       </template>
                     </v-text-field>
                   </div>
@@ -134,11 +140,11 @@
 
             <v-btn
               block
-              variant="tonal"
+              variant="outlined"
               color="primary"
               prepend-icon="mdi-plus"
               size="small"
-              class="mt-1"
+              class="mt-1 btn-neon"
               @click="addMapping"
             >
               添加映射
@@ -146,14 +152,15 @@
           </div>
 
           <!-- 高级选项 -->
-          <div v-if="formData.type === 'prune'" class="form-section">
-            <div class="section-title mb-2">高级选项</div>
+          <div v-if="formData.type === 'prune'" class="form-section border border-slate-700 bg-slate-900/50">
+            <div class="section-title mb-2 text-primary font-display">高级选项</div>
             <v-switch
               v-model="formData.reverse"
               label="反向检测"
               color="primary"
               hide-details
               density="compact"
+              class="text-slate-300"
             >
               <template v-slot:append>
                 <v-tooltip location="top">
@@ -169,14 +176,16 @@
       </v-card-text>
 
       <!-- 底部操作区域 -->
-      <div class="editor-footer">
-        <v-btn variant="text" size="default" @click="isOpen = false">取消</v-btn>
+      <div class="editor-footer border-t border-neon bg-slate-900/80">
+        <v-btn variant="text" size="default" color="grey" @click="isOpen = false" class="font-mono">取消</v-btn>
         <v-btn 
-          class="submit-btn"
+          class="submit-btn btn-neon ml-2"
           size="default"
           @click="handleSubmit" 
           :loading="submitting" 
           :disabled="!valid"
+          variant="tonal"
+          color="primary"
         >
           <v-icon icon="mdi-check" size="18" class="mr-1"></v-icon>
           {{ isEdit ? '保存' : '创建' }}
@@ -296,19 +305,21 @@ watch(() => props.edit, (newEdit) => {
 </script>
 
 <style scoped>
-.editor-card {
-  border-radius: 16px;
+.glass-content-card {
+  background: rgba(15, 23, 42, 0.95) !important;
+  backdrop-filter: blur(20px) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 0 50px rgba(0, 240, 255, 0.15) !important;
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  color: #E0F2F7;
 }
 
 .editor-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  padding: 16px 20px;
+  background: linear-gradient(to right, rgba(15, 23, 42, 0.8), rgba(0, 0, 0, 0.6));
 }
 
 .header-content {
@@ -323,13 +334,15 @@ watch(() => props.edit, (newEdit) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
+  background: rgba(0, 240, 255, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
 }
 
 .header-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .close-btn {
@@ -339,51 +352,32 @@ watch(() => props.edit, (newEdit) => {
   align-items: center;
   justify-content: center;
   border: none;
-  background: rgba(255, 255, 255, 0.1);
+  background: transparent;
   border-radius: 6px;
-  color: white;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .editor-content {
-  padding: 16px !important;
+  padding: 20px !important;
 }
 
-.editor-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 12px 16px;
-  background: #fafafa;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+/* 顶部/底部边框 */
+.border-neon {
+  border-color: rgba(0, 240, 255, 0.3) !important;
 }
-
-.submit-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  color: white !important;
-  font-weight: 600 !important;
-  border-radius: 8px !important;
-  text-transform: none !important;
-  letter-spacing: 0 !important;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3) !important;
-}
-
-.submit-btn:hover {
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4) !important;
+.border-slate-700 {
+    border-color: rgba(51, 65, 85, 0.5) !important;
 }
 
 .form-section {
-  border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  background-color: #fafafa;
-  padding: 12px;
-  margin-bottom: 12px;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
 }
 
 .form-section:last-child {
@@ -391,11 +385,10 @@ watch(() => props.edit, (newEdit) => {
 }
 
 .section-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: #667eea;
+  font-size: 12px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -408,99 +401,75 @@ watch(() => props.edit, (newEdit) => {
 }
 
 .mapping-item {
-  background-color: white;
-  border-color: rgba(0, 0, 0, 0.06) !important;
-  border-radius: 8px !important;
   transition: all 0.2s ease;
 }
 
 .mapping-item:hover {
-  background-color: #fafafa;
-  border-color: rgba(102, 126, 234, 0.3) !important;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
-}
-
-.mapping-item.last-item {
-  margin-bottom: 0 !important;
-}
-
-.mapping-fields {
-  min-width: 0;
+  background-color: rgba(30, 41, 59, 0.8) !important;
+  border-color: rgba(0, 240, 255, 0.3) !important;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.05);
 }
 
 .remove-btn {
   margin-top: 4px;
   flex-shrink: 0;
+  opacity: 0.6;
 }
 
-.close-btn:hover {
-  background-color: rgba(0, 0, 0, 0.08);
-}
-
-/* 响应式优化 */
-@media (max-width: 600px) {
-  .form-section {
-    padding: 16px;
-  }
-  
-  .mapping-fields .d-flex {
-    flex-direction: column;
-    gap: 12px !important;
-  }
+.remove-btn:hover {
+  opacity: 1;
 }
 
 /* 滚动条样式 */
-.mappings-container::-webkit-scrollbar {
+.custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
-
-.mappings-container::-webkit-scrollbar-track {
-  background: #f1f1f1;
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.1);
   border-radius: 3px;
 }
-
-.mappings-container::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
   border-radius: 3px;
 }
-
-.mappings-container::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 240, 255, 0.3);
 }
 
-/* 优化表单字段样式 */
-:deep(.v-field) {
-  margin-bottom: 0;
+/* 字体工具 */
+.font-display {
+  font-family: 'Orbitron', sans-serif;
+}
+.font-mono {
+  font-family: 'Space Mono', monospace;
 }
 
-:deep(.v-field__prepend-inner) {
-  padding-left: 8px;
+/* Input Styles Override */
+:deep(.v-field__outline__start),
+:deep(.v-field__outline__end),
+:deep(.v-field__outline__notch) {
+  border-color: rgba(51, 65, 85, 0.5) !important;
 }
 
-:deep(.v-field__prepend-inner .v-icon) {
-  opacity: 0.7;
+:deep(.v-field:hover .v-field__outline__start),
+:deep(.v-field:hover .v-field__outline__end),
+:deep(.v-field:hover .v-field__outline__notch) {
+  border-color: rgba(0, 240, 255, 0.5) !important;
 }
 
-/* 优化按钮图标间距 */
-:deep(.v-btn--prepend-icon .v-btn__content) {
-  gap: 6px;
+:deep(.v-field--focused .v-field__outline__start),
+:deep(.v-field--focused .v-field__outline__end),
+:deep(.v-field--focused .v-field__outline__notch) {
+  border-color: #00F0FF !important;
+  box-shadow: 0 0 5px rgba(0, 240, 255, 0.2);
 }
 
-/* Chip 样式优化 */
-:deep(.v-chip) {
-  font-size: 12px;
+:deep(.v-field__input) {
+  color: #E0F2F7 !important;
+  font-family: 'Space Mono', monospace;
 }
 
-/* Switch 样式优化 */
-:deep(.v-switch .v-switch__track) {
-  opacity: 0.8;
-}
-
-:deep(.v-switch--inset .v-switch__track) {
-  background-color: rgba(0, 0, 0, 0.08);
-}
-
-:deep(.v-switch--inset.v-switch--model-value .v-switch__track) {
-  background-color: #1976d2;
+:deep(.v-label) {
+  color: rgba(148, 163, 184, 0.8) !important;
 }
 </style>

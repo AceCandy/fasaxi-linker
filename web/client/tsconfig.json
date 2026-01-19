@@ -31,6 +31,7 @@
     "**/*.vue"
   ],
   "exclude": [
-    "_backup"
+    "_backup",
+    "vite.config.ts"
   ],
 }

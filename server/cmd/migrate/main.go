@@ -12,9 +12,8 @@ import (
 
 // OldConfig represents the old config structure with external file path
 type OldConfig struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	ConfigPath  string `json:"configPath"`
+	Name       string `json:"name"`
+	ConfigPath string `json:"configPath"`
 }
 
 // OldDBWrapper represents the old database structure
@@ -25,9 +24,8 @@ type OldDBWrapper struct {
 
 // NewConfig represents the new config structure with embedded detail
 type NewConfig struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Detail      string `json:"detail"`
+	Name   string `json:"name"`
+	Detail string `json:"detail"`
 }
 
 // NewDBWrapper represents the new database structure
@@ -75,9 +73,8 @@ func main() {
 		}
 
 		newConfigs[i] = NewConfig{
-			Name:        oldConfig.Name,
-			Description: oldConfig.Description,
-			Detail:      string(detail),
+			Name:   oldConfig.Name,
+			Detail: string(detail),
 		}
 	}
 

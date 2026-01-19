@@ -2,255 +2,202 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 全局样式变量 */
+/* 全局样式变量 - Tech Futuristic Dark Theme */
 :root {
-    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-    --gradient-bg: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
-    --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.12);
+    --color-primary: #00F0FF;
+    /* Cyan Neon */
+    --color-secondary: #4D4DFF;
+    /* Electric Blue */
+    --color-background: #0F172A;
+    /* Slate 950 */
+    --color-surface: rgba(30, 41, 59, 0.4);
+    /* Slate 800 with opacity */
+    --color-text: #E0F2F7;
+    /* Sky 100 */
+    --color-accent: #6D28D9;
+    /* Violet 700 */
+
+    /* 霓虹发光阴影 */
+    --shadow-neon: 0 0 10px rgba(0, 240, 255, 0.3), 0 0 20px rgba(0, 240, 255, 0.1);
+    --shadow-neon-strong: 0 0 15px rgba(0, 240, 255, 0.5), 0 0 30px rgba(0, 240, 255, 0.3);
+    --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
-/* 页面背景 */
+body {
+    background-color: var(--color-background);
+    color: var(--color-text);
+    font-family: 'Space Mono', monospace;
+    overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 1px;
+}
+
+/* 页面背景 - 深色星空渐变 */
 .app-background {
-    background: var(--gradient-bg);
+    background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 100%);
     min-height: 100vh;
 }
 
-/* 玻璃态卡片 */
+/* 玻璃态卡片 - 通用 */
 .glass-card {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: var(--shadow-soft);
-    transition: all 0.3s ease;
-}
-
-.glass-card:hover {
-    box-shadow: var(--shadow-hover);
-    transform: translateY(-2px);
-}
-
-/* 渐变文字 */
-.gradient-text {
-    background: var(--gradient-primary);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-/* 渐变按钮 */
-.gradient-btn {
-    background: var(--gradient-primary) !important;
-    color: white !important;
-    border: none !important;
-    transition: all 0.3s ease !important;
-}
-
-.gradient-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-}
-
-/* 卡片悬停动画 */
-.card-hover-effect {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.card-hover-effect:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-hover);
-}
-
-/* 状态指示器动画 */
-@keyframes pulse-glow {
-
-    0%,
-    100% {
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
-    }
-
-    50% {
-        box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
-    }
-}
-
-.pulse-active {
-    animation: pulse-glow 2s infinite;
-}
-
-/* 渐变边框 */
-.gradient-border {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 240, 255, 0.1);
+    box-shadow: var(--shadow-glass);
+    border-radius: 4px;
     position: relative;
-    background: white;
-    border-radius: 12px;
+    overflow: hidden;
+    color: var(--color-text);
 }
 
-.gradient-border::before {
+.glass-card::before {
     content: '';
     position: absolute;
-    inset: -2px;
-    background: var(--gradient-primary);
-    border-radius: 14px;
-    z-index: -1;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.5), transparent);
 }
 
-/* 平滑过渡 */
-* {
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+/* 玻璃态列表/菜单 */
+.glass-menu {
+    background: rgba(15, 23, 42, 0.95) !important;
+    backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(0, 240, 255, 0.2);
+    box-shadow: var(--shadow-neon) !important;
+    border-radius: 4px !important;
 }
 
-/* Vuetify 弹窗优化 */
-.v-overlay {
-    /* backdrop-filter: blur(4px); */
-    /* 移除了模糊效果以防止页面被蒙层覆盖 */
+/* 滚动条 */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
 }
 
-.v-dialog {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+::-webkit-scrollbar-track {
+    background: #0f172a;
 }
 
-.v-dialog .v-card {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border: 1px solid rgba(0, 240, 255, 0.3);
+    border-radius: 2px;
 }
 
-/* 优化弹窗动画 */
-.v-dialog--active .v-overlay__scrim {
-    animation: fade-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 240, 255, 0.5);
+    border-color: #00F0FF;
 }
 
-@keyframes fade-in {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+/* Vuetify 全局覆盖 */
+.v-application {
+    background: transparent !important;
+    font-family: 'Space Mono', monospace !important;
+    color: var(--color-text) !important;
 }
 
-/* 按钮点击反馈 */
-.v-btn {
-    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-.v-btn:active {
-    transform: scale(0.96) !important;
-}
-
-/* 卡片点击反馈 */
 .v-card {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    background: rgba(30, 41, 59, 0.8) !important;
+    color: var(--color-text) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* 导航按钮优化 */
-.v-btn--router-link-active {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+/* 去除 Vuetify 默认阴影，使用自定义发光 */
+.v-dialog .v-card {
+    box-shadow: var(--shadow-neon) !important;
+    border: 1px solid rgba(0, 240, 255, 0.2) !important;
+}
+
+/* 修复容器间距 */
+.v-container {
+    padding-top: 16px !important;
+    padding-bottom: 16px !important;
+}
+
+.v-app-bar {
+    background: rgba(15, 23, 42, 0.8) !important;
+    backdrop-filter: blur(16px) !important;
+    border-bottom: 1px solid rgba(0, 240, 255, 0.1) !important;
+}
+
+.v-main {
+    padding-top: 72px !important;
+    min-height: calc(100vh - 72px) !important;
 }
 
 /* 确保页面可以正常滚动 */
-html, body {
+html,
+body {
     height: auto !important;
     min-height: 100vh;
     overflow-x: hidden !important;
     overflow-y: auto !important;
 }
 
-.v-application--wrap {
-    min-height: 100vh;
+/* 工具类增强 */
+.text-primary-glow {
+    color: var(--color-primary);
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
 }
 
-/* Vuetify布局修复 */
-.v-app-bar {
-    position: fixed !important;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 1000;
-    height: 72px !important; /* 增加导航栏高度 */
+.border-neon {
+    border-color: var(--color-primary) !important;
 }
 
-.v-main {
-    margin-top: 72px !important; /* 调整为实际导航栏高度 */
-    padding-top: 0px !important; /* 消除顶部内边距 */
-    height: auto !important;
-    min-height: calc(100vh - 72px) !important;
-    overflow: auto !important;
+/* Global Neon Buttons */
+.btn-neon {
+    background: rgba(0, 240, 255, 0.1) !important;
+    border: 1px solid rgba(0, 240, 255, 0.5) !important;
+    color: var(--color-primary) !important;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.1);
+    transition: all 0.3s ease;
+    text-transform: none !important;
+    letter-spacing: 0.5px;
+    font-family: 'Orbitron', sans-serif;
 }
 
-.v-layout {
-    height: auto !important;
-    min-height: 100vh;
+.btn-neon:hover {
+    background: rgba(0, 240, 255, 0.2) !important;
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+    border-color: #00F0FF !important;
+    transform: translateY(-1px);
 }
 
-.v-application {
-    height: auto !important;
-    min-height: 100vh;
+.btn-neon:active {
+    transform: translateY(1px);
+    box-shadow: 0 0 5px rgba(0, 240, 255, 0.2);
 }
 
-/* 修复容器间距 */
-.v-container {
-    padding-top: 0px !important; /* 完全消除顶部间距 */
-    padding-left: 16px !important;
-    padding-right: 16px !important;
-    padding-bottom: 16px !important;
+.btn-glass {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: var(--color-text) !important;
+    backdrop-filter: blur(4px);
 }
 
-/* 确保任务列表与导航栏紧密对齐 */
-.task-header {
-    margin-top: 0px !important;
+.btn-glass:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
-/* 自定义滚动条 */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
-}
-
-/* 空状态图标动画 */
-@keyframes float {
-
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-
-    50% {
-        transform: translateY(-10px);
-    }
-}
-
-.float-animation {
-    animation: float 3s ease-in-out infinite;
-}
-
-/* 加载动画增强 */
-@keyframes shimmer {
-    0% {
-        background-position: -200% 0;
-    }
-
-    100% {
-        background-position: 200% 0;
-    }
-}
-
-.shimmer {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
+/* Global Tooltip Override */
+.v-overlay__content {
+    background: rgba(15, 23, 42, 0.9) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(0, 240, 255, 0.3) !important;
+    color: var(--color-primary) !important;
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.2) !important;
+    font-family: 'Space Mono', monospace !important;
+    font-size: 12px !important;
+    border-radius: 4px !important;
 }

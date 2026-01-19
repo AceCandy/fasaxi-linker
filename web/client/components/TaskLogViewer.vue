@@ -1,29 +1,29 @@
 <template>
   <v-dialog v-model="isOpen" max-width="960" scrollable class="glass-dialog">
-    <v-card class="glass-content-card">
+    <v-card class="glass-content-card border-neon">
       <!-- Header -->
-      <div class="dialog-header">
+      <div class="dialog-header border-b border-neon">
         <div class="header-icon-box">
-          <v-icon icon="mdi-text-box-search-outline" color="info" size="24"></v-icon>
+          <v-icon icon="mdi-text-box-search-outline" color="primary" size="24"></v-icon>
         </div>
         <div>
-          <div class="text-h6 font-weight-bold text-grey-darken-3">任务日志</div>
-          <div class="text-caption text-grey-darken-1 d-flex align-center">
+          <div class="text-h6 font-weight-bold text-primary-glow font-display">任务日志</div>
+          <div class="text-caption text-slate-400 d-flex align-center font-mono">
             {{ taskName }}
-            <span class="mx-2 text-grey-lighten-2">|</span>
-            <span class="text-info">{{ logLines.length }} 条记录</span>
+            <span class="mx-2 text-slate-600">|</span>
+            <span class="text-primary">{{ logLines.length }} 条记录</span>
           </div>
         </div>
         <v-spacer></v-spacer>
         <div class="d-flex align-center gap-2">
           <v-btn
             variant="text"
-            color="grey-darken-1"
+            color="grey"
             prepend-icon="mdi-refresh"
             size="small"
             @click="fetchLog"
             :loading="loading"
-            class="text-none action-btn"
+            class="text-none action-btn font-mono"
           >
             刷新
           </v-btn>
@@ -34,19 +34,17 @@
             size="small"
             :disabled="!logLines.length"
             @click="handleClearLog"
-            class="text-none action-btn"
+            class="text-none action-btn font-mono"
           >
             清空
           </v-btn>
-          <v-divider vertical class="mx-2 h-50"></v-divider>
+          <v-divider vertical class="mx-2 h-50 border-slate-600"></v-divider>
           <v-btn icon="mdi-close" variant="text" size="small" @click="isOpen = false" color="grey"></v-btn>
         </div>
       </div>
       
-      <v-divider class="border-opacity-50"></v-divider>
-
       <!-- Filters Toolbar -->
-      <div class="filter-toolbar px-6 py-3 bg-grey-lighten-5">
+      <div class="filter-toolbar px-6 py-3 bg-black/20 border-b border-slate-800">
         <div class="d-flex align-center gap-4">
           <v-text-field
             v-model="searchText"
@@ -55,8 +53,8 @@
             variant="outlined"
             density="compact"
             hide-details
-            bg-color="white"
-            class="search-input flex-grow-1"
+            bg-color="rgba(15, 23, 42, 0.5)"
+            class="search-input flex-grow-1 font-mono"
             style="max-width: 300px"
           ></v-text-field>
           
@@ -69,15 +67,13 @@
             class="filter-toggle"
             rounded="lg"
           >
-            <v-btn value="all" class="text-none">全部</v-btn>
-            <v-btn value="SUCCESS" class="text-none text-success">成功</v-btn>
-            <v-btn value="ERROR" class="text-none text-error">错误</v-btn>
+            <v-btn value="all" class="text-none font-mono">全部</v-btn>
+            <v-btn value="SUCCESS" class="text-none text-success font-mono">成功</v-btn>
+            <v-btn value="ERROR" class="text-none text-error font-mono">错误</v-btn>
           </v-btn-toggle>
         </div>
       </div>
       
-      <v-divider class="border-opacity-50"></v-divider>
-
       <!-- Log Content -->
       <div class="log-container pa-0 position-relative">
         <div v-if="loading" class="loading-overlay">
@@ -85,15 +81,15 @@
         </div>
         
         <div v-if="!loading && !filteredLines.length" class="empty-state d-flex flex-column align-center justify-center">
-          <v-icon size="48" color="grey-darken-3" class="mb-3 opacity-20">mdi-text-box-remove-outline</v-icon>
-          <div class="text-grey-darken-1">{{ searchText ? '未找到相关日志' : '暂无日志记录' }}</div>
+          <v-icon size="48" color="slate-700" class="mb-3 opacity-50">mdi-text-box-remove-outline</v-icon>
+          <div class="text-slate-500 font-mono">{{ searchText ? '未找到相关日志' : '暂无日志记录' }}</div>
         </div>
 
         <div v-else class="log-content custom-scrollbar pa-4 text-body-2" ref="logContainer">
           <div
             v-for="(line, index) in filteredLines"
             :key="index"
-            class="log-line mb-1"
+            class="log-line mb-1 font-jetbrains"
             v-html="formatLine(line)"
           ></div>
         </div>
@@ -192,7 +188,7 @@ const formatLine = (line: string) => {
 
   return cleanLine
     .replace(/\[([\/\d\s:]+)\]/g, '<span class="log-time">[$1]</span>')
-    .replace(/(SUCCESS|SUCCEED)/g, '<span class="log-success">$1</span>')
+    .replace(/(SUCCESS|SUCCEED)/g, '<span class="log-primary">$1</span>')
     .replace(/ERROR/g, '<span class="log-error">ERROR</span>')
     .replace(/INFO/g, '<span class="log-info">INFO</span>')
     .replace(/WARN/g, '<span class="log-warn">WARN</span>')
@@ -203,12 +199,13 @@ const formatLine = (line: string) => {
 
 <style scoped>
 .glass-content-card {
-  background: rgba(255, 255, 255, 0.98) !important;
+  background: rgba(15, 23, 42, 0.98) !important;
   backdrop-filter: blur(20px) !important;
   border-radius: 20px !important;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.1) !important;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5) !important;
   overflow: hidden;
-  border: 1px solid rgba(0,0,0,0.05);
+  border: 1px solid rgba(0, 240, 255, 0.1);
+  color: #E0F2F7;
 }
 
 .dialog-header {
@@ -216,22 +213,24 @@ const formatLine = (line: string) => {
   align-items: center;
   padding: 16px 24px;
   gap: 12px;
-  background: white;
+  background: rgba(15, 23, 42, 0.9);
 }
 
 .header-icon-box {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(0, 240, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.1);
 }
 
 .log-container {
   height: 500px;
-  background: #1e1e1e; /* VS Code style dark bg */
+  background: #0f172a; /* Darkest slate */
   position: relative;
   display: flex;
   flex-direction: column;
@@ -243,7 +242,7 @@ const formatLine = (line: string) => {
   font-family: 'JetBrains Mono', Consolas, Monaco, monospace;
   font-size: 13px;
   line-height: 1.6;
-  color: #d4d4d4;
+  color: #94a3b8; /* slate-400 */
 }
 
 .log-line {
@@ -251,17 +250,18 @@ const formatLine = (line: string) => {
   white-space: pre-wrap;
   padding-left: 8px;
   border-left: 2px solid transparent;
+  transition: all 0.1s;
 }
 
 .log-line:hover {
   background: rgba(255, 255, 255, 0.05);
-  border-left-color: #667eea;
+  border-left-color: #00F0FF;
 }
 
 .loading-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(30, 30, 30, 0.8);
+  background: rgba(15, 23, 42, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -271,36 +271,49 @@ const formatLine = (line: string) => {
 .empty-state {
   height: 100%;
   color: #555;
-  background: #1e1e1e;
+  background: #0f172a;
 }
 
 /* Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 10px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: #1e1e1e;
+  width: 8px;
+  background-color: #0f172a;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #444;
-  border-radius: 5px;
-  border: 2px solid #1e1e1e;
+  background: #334155;
+  border-radius: 4px;
+  border: 2px solid #0f172a;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #475569;
 }
 
-/* Log Coloring using global styles or deep selectors */
-:deep(.log-time) { color: #569cd6; opacity: 0.8; }
-:deep(.log-success) { color: #4ec9b0; font-weight: bold; }
-:deep(.log-error) { color: #f44747; font-weight: bold; }
-:deep(.log-info) { color: #9cdcfe; font-weight: bold; }
-:deep(.log-warn) { color: #ce9178; font-weight: bold; }
-:deep(.log-arrow) { color: #c586c0; font-weight: bold; }
-:deep(.log-path) { color: #ce9178; text-decoration: underline; text-underline-offset: 2px; }
+/* Log Coloring */
+:deep(.log-time) { color: #64748b; font-family: 'Space Mono', monospace; font-size: 12px; }
+:deep(.log-primary) { color: #00F0FF; font-weight: bold; text-shadow: 0 0 5px rgba(0, 240, 255, 0.3); }
+:deep(.log-error) { color: #f87171; font-weight: bold; text-shadow: 0 0 5px rgba(248, 113, 113, 0.3); }
+:deep(.log-info) { color: #38bdf8; font-weight: bold; }
+:deep(.log-warn) { color: #fb923c; font-weight: bold; }
+:deep(.log-arrow) { color: #818cf8; font-weight: bold; margin: 0 4px; }
+:deep(.log-path) { color: #e2e8f0; text-decoration: none; border-bottom: 1px dashed #475569; }
 
-.action-btn {
-  font-weight: 500;
-  letter-spacing: 0.5px;
+.font-display {
+    font-family: 'Orbitron', sans-serif;
+}
+.font-mono {
+    font-family: 'Space Mono', monospace;
+}
+.border-neon {
+    border-color: rgba(0, 240, 255, 0.3) !important;
+}
+
+.search-input :deep(.v-field__outline__start),
+.search-input :deep(.v-field__outline__end),
+.search-input :deep(.v-field__outline__notch) {
+  border-color: rgba(51, 65, 85, 0.5) !important;
+}
+
+.search-input :deep(.v-field__input) {
+  color: #E0F2F7 !important;
 }
 </style>
