@@ -49,3 +49,16 @@ coverage
 tmp
 temp
 .cache
+
+# AI/Development tools
+.ai_memory
+.ace-tool
+.kiro
+.claude
+plans
+acetest-*
+
+# Web core build artifacts
+web/core/lib
+web/core/node_modules
+web/dist

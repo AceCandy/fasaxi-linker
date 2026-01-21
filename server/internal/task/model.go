@@ -7,6 +7,7 @@ import (
 
 // Task represents a task configuration
 type Task struct {
+	ID            int           `json:"id"`
 	Name          string        `json:"name"`
 	Type          string        `json:"type"` // "main" or "prune"
 	PathsMapping  []PathMapping `json:"pathsMapping"`

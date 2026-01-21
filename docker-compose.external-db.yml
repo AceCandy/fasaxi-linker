@@ -1,28 +1,18 @@
 services:
-  backend:
+  app:
     build:
-      context: ./server
+      context: .
       dockerfile: Dockerfile
+    container_name: fasaxi-app
     environment:
       POSTGRES_HOST: ${POSTGRES_HOST:?set POSTGRES_HOST to your existing Postgres host or container name}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
       POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
+      STATIC_PATH: /app/static
     ports:
       - "19090:9090"
-    restart: unless-stopped
-    networks:
-      - fasaxi-network
-
-  frontend:
-    build:
-      context: .
-      dockerfile: web/Dockerfile
-    ports:
-      - "15170:80"
-    depends_on:
-      - backend
     restart: unless-stopped
     networks:
       - fasaxi-network

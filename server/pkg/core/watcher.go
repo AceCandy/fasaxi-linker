@@ -172,14 +172,7 @@ func (w *Watcher) handleAdd(path string) {
 
 	// Check Cache
 	if w.options.OpenCache {
-		// Get cache path
-		hlinkHome := os.Getenv("HLINK_HOME")
-		if hlinkHome == "" {
-			homeDir, _ := os.UserHomeDir()
-			hlinkHome = filepath.Join(homeDir, ".hlink")
-		}
-		cachePath := filepath.Join(hlinkHome, "cache-array.json")
-		cache := NewCache(cachePath)
+		cache := NewCache()
 		cache.SetTaskName(w.options.Name) // Set task name for cache isolation
 
 		// Check if file is already in cache
@@ -225,14 +218,7 @@ func (w *Watcher) handleAdd(path string) {
 
 		// Add to cache if enabled and processing was successful or file exists
 		if w.options.OpenCache && linkSuccess {
-			// Get cache path
-			hlinkHome := os.Getenv("HLINK_HOME")
-			if hlinkHome == "" {
-				homeDir, _ := os.UserHomeDir()
-				hlinkHome = filepath.Join(homeDir, ".hlink")
-			}
-			cachePath := filepath.Join(hlinkHome, "cache-array.json")
-			cache := NewCache(cachePath)
+			cache := NewCache()
 			cache.SetTaskName(w.options.Name) // Set task name for cache isolation
 
 			// Add file to cache

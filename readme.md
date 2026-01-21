@@ -102,24 +102,37 @@ pnpm dev
 
 ### Docker 部署
 
+**🎉 前后端已整合为单一镜像，部署更简单！**
+
 #### 使用 docker-compose（内置 Postgres）
 ```bash
 # 在项目根目录
 docker-compose up -d
-# 前端默认暴露 8080，后端 API 默认 9090
+
+# 访问应用
+# http://localhost:19090
 ```
 
 #### 使用 docker-compose.external-db（外部 Postgres）
 ```bash
-# 需先准备好可用的 Postgres，并在 compose 文件中填好环境变量
+# 需先配置环境变量（POSTGRES_HOST, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB）
 docker-compose -f docker-compose.external-db.yml up -d
+
+# 访问应用
+# http://localhost:19090
 ```
 
-#### 仅构建镜像
+#### 构建镜像
 ```bash
-docker build -t linker-server -f server/Dockerfile ./server
-docker build -t linker-web -f web/Dockerfile ./web
+# 构建统一镜像（包含前后端）
+docker build -t fasaxi-linker:latest .
 ```
+
+**架构说明**：
+- ✅ 前后端整合到单一镜像
+- ✅ Go 后端直接提供前端静态文件
+- ✅ 单一端口 19090 提供所有服务
+- ✅ 无需 Nginx，部署更简单
 
 ---
 

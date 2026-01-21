@@ -71,7 +71,7 @@ func (s *Store) loadTasks(ctx context.Context) ([]Task, error) {
 	pool := db.GetPool()
 
 	query := `
-		SELECT name, type, paths_mapping, include_patterns, exclude_patterns,
+		SELECT id, name, type, paths_mapping, include_patterns, exclude_patterns,
 		       save_mode, open_cache, mkdir_if_single, delete_dir, keep_dir_struct,
 		       schedule_type, schedule_value, reverse, config, config_id, is_watching, watch_error
 		FROM tasks
@@ -90,7 +90,7 @@ func (s *Store) loadTasks(ctx context.Context) ([]Task, error) {
 		var pathsMappingJSON, includeJSON, excludeJSON []byte
 
 		err := rows.Scan(
-			&t.Name, &t.Type, &pathsMappingJSON, &includeJSON, &excludeJSON,
+			&t.ID, &t.Name, &t.Type, &pathsMappingJSON, &includeJSON, &excludeJSON,
 			&t.SaveMode, &t.OpenCache, &t.MkdirIfSingle, &t.DeleteDir, &t.KeepDirStruct,
 			&t.ScheduleType, &t.ScheduleValue, &t.Reverse, &t.Config, &t.ConfigID, &t.IsWatching, &t.WatchError,
 		)
@@ -154,6 +154,29 @@ func (s *Store) loadConfigs(ctx context.Context) ([]Config, error) {
 	}
 
 	return configs, nil
+}
+
+// GetTaskIDByName retrieves the task ID for a given task name
+func (s *Store) GetTaskIDByName(taskName string) (int, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	pool := db.GetPool()
+	if pool == nil {
+		return 0, fmt.Errorf("database connection pool is not initialized")
+	}
+
+	var taskID int
+	query := `SELECT id FROM tasks WHERE name = $1`
+	err := pool.QueryRow(ctx, query, taskName).Scan(&taskID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get task ID for name %s: %w", taskName, err)
+	}
+
+	return taskID, nil
 }
 
 func (s *Store) Save(tasks []Task, configs []Config) error {

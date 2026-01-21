@@ -151,97 +151,23 @@ func createTables(ctx context.Context) error {
 	cacheFilesTable := `
 	CREATE TABLE IF NOT EXISTS cache_files (
 		id SERIAL PRIMARY KEY,
-		task_name VARCHAR(255) NOT NULL,
+		task_id INTEGER NOT NULL,
 		file_path TEXT NOT NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		UNIQUE(task_name, file_path)
+		UNIQUE(task_id, file_path)
 	);
-	CREATE INDEX IF NOT EXISTS idx_cache_files_task_name ON cache_files(task_name);
 	`
 
 	taskLogsTable := `
 	CREATE TABLE IF NOT EXISTS task_logs (
 		id SERIAL PRIMARY KEY,
-		task_name VARCHAR(255) NOT NULL,
+		task_id INTEGER NOT NULL,
 		level VARCHAR(20) NOT NULL,
 		message TEXT NOT NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
-	CREATE INDEX IF NOT EXISTS idx_task_logs_task_name ON task_logs(task_name);
+	CREATE INDEX IF NOT EXISTS idx_task_logs_task_id ON task_logs(task_id);
 	CREATE INDEX IF NOT EXISTS idx_task_logs_created_at ON task_logs(created_at DESC);
-	`
-
-	// Ensure new columns/constraints exist for tasks/configs
-	schemaAdjustments := `
-	DO $$
-	BEGIN
-		-- tasks table: add id column if missing
-		IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'tasks' AND column_name = 'id') THEN
-			ALTER TABLE tasks ADD COLUMN id SERIAL;
-		END IF;
-		-- tasks primary key on id
-		IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_name = 'tasks' AND constraint_type = 'PRIMARY KEY' AND constraint_name = 'tasks_pkey') THEN
-			ALTER TABLE tasks DROP CONSTRAINT tasks_pkey;
-		END IF;
-		IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_name = 'tasks' AND constraint_type = 'PRIMARY KEY') THEN
-			ALTER TABLE tasks ADD CONSTRAINT tasks_pkey PRIMARY KEY (id);
-		END IF;
-		-- tasks unique name (skip if any unique already exists, including implicit *_key)
-		IF NOT EXISTS (
-			SELECT 1
-			FROM information_schema.table_constraints tc
-			JOIN information_schema.constraint_column_usage ccu
-			ON tc.constraint_name = ccu.constraint_name
-			WHERE tc.table_name = 'tasks'
-			  AND tc.constraint_type = 'UNIQUE'
-			  AND ccu.column_name = 'name'
-		) THEN
-			ALTER TABLE tasks ADD CONSTRAINT tasks_name_unique UNIQUE (name);
-		END IF;
-		-- tasks name not null
-		ALTER TABLE tasks ALTER COLUMN name SET NOT NULL;
-		-- tasks config_id column
-		IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'tasks' AND column_name = 'config_id') THEN
-			ALTER TABLE tasks ADD COLUMN config_id INTEGER;
-		END IF;
-	END $$;
-
-	DO $$
-	BEGIN
-		-- configs table: add id column if missing
-		IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'configs' AND column_name = 'id') THEN
-			ALTER TABLE configs ADD COLUMN id SERIAL;
-		END IF;
-		-- configs table: drop description column if present
-		IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'configs' AND column_name = 'description') THEN
-			ALTER TABLE configs DROP COLUMN description;
-		END IF;
-		-- configs primary key on id
-		IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_name = 'configs' AND constraint_type = 'PRIMARY KEY' AND constraint_name = 'configs_pkey') THEN
-			ALTER TABLE configs DROP CONSTRAINT configs_pkey;
-		END IF;
-		IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_name = 'configs' AND constraint_type = 'PRIMARY KEY') THEN
-			ALTER TABLE configs ADD CONSTRAINT configs_pkey PRIMARY KEY (id);
-		END IF;
-		-- configs unique name (skip if any unique already exists, including implicit *_key)
-		IF NOT EXISTS (
-			SELECT 1
-			FROM information_schema.table_constraints tc
-			JOIN information_schema.constraint_column_usage ccu
-			ON tc.constraint_name = ccu.constraint_name
-			WHERE tc.table_name = 'configs'
-			  AND tc.constraint_type = 'UNIQUE'
-			  AND ccu.column_name = 'name'
-		) THEN
-			ALTER TABLE configs ADD CONSTRAINT configs_name_unique UNIQUE (name);
-		END IF;
-	END $$;
-
-	-- Backfill tasks.config_id from config name if missing
-	UPDATE tasks t
-	SET config_id = c.id
-	FROM configs c
-	WHERE t.config_id IS NULL AND t.config IS NOT NULL AND t.config <> '' AND t.config = c.name;
 	`
 
 	if _, err := pool.Exec(ctx, tasksTable); err != nil {
@@ -290,10 +216,6 @@ func createTables(ctx context.Context) error {
 		return fmt.Errorf("failed to add comments for configs table: %w", err)
 	}
 
-	if _, err := pool.Exec(ctx, schemaAdjustments); err != nil {
-		return fmt.Errorf("failed to adjust schema: %w", err)
-	}
-
 	if _, err := pool.Exec(ctx, cacheFilesTable); err != nil {
 		return fmt.Errorf("failed to create cache_files table: %w", err)
 	}
@@ -301,7 +223,7 @@ func createTables(ctx context.Context) error {
 	cacheFilesComments := `
 	COMMENT ON TABLE cache_files IS '缓存文件表';
 	COMMENT ON COLUMN cache_files.id IS '主键';
-	COMMENT ON COLUMN cache_files.task_name IS '关联任务名称';
+	COMMENT ON COLUMN cache_files.task_id IS '关联任务ID';
 	COMMENT ON COLUMN cache_files.file_path IS '缓存文件路径';
 	COMMENT ON COLUMN cache_files.created_at IS '创建时间';
 	`
@@ -316,7 +238,7 @@ func createTables(ctx context.Context) error {
 	taskLogsComments := `
 	COMMENT ON TABLE task_logs IS '任务日志表';
 	COMMENT ON COLUMN task_logs.id IS '主键';
-	COMMENT ON COLUMN task_logs.task_name IS '任务名称';
+	COMMENT ON COLUMN task_logs.task_id IS '任务ID';
 	COMMENT ON COLUMN task_logs.level IS '日志级别';
 	COMMENT ON COLUMN task_logs.message IS '日志内容';
 	COMMENT ON COLUMN task_logs.created_at IS '创建时间';

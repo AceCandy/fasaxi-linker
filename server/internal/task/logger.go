@@ -10,10 +10,21 @@ var logStore = &logs.Store{}
 
 // GetLogger returns a logger function that writes to database and stdout
 func GetLogger(taskName string) func(level, msg string) {
+	// Resolve task name to ID
+	store := GetSharedStore()
+	taskID, err := store.GetTaskIDByName(taskName)
+	if err != nil {
+		// Fallback: log error but continue
+		fmt.Printf("Warning: failed to resolve task name %s to ID: %v\n", taskName, err)
+		taskID = 0
+	}
+
 	return func(level, msg string) {
-		// Write to database
-		if err := logStore.Add(taskName, level, msg); err != nil {
-			fmt.Printf("Error writing to log database: %v\n", err)
+		// Write to database if we have a valid task ID
+		if taskID > 0 {
+			if err := logStore.Add(taskID, level, msg); err != nil {
+				fmt.Printf("Error writing to log database: %v\n", err)
+			}
 		}
 
 		// Also print to stdout
@@ -23,7 +34,15 @@ func GetLogger(taskName string) func(level, msg string) {
 
 // GetLogContent reads the log content from database
 func GetLogContent(taskName string) string {
-	content, err := logStore.GetByTaskName(taskName)
+	// Resolve task name to ID
+	store := GetSharedStore()
+	taskID, err := store.GetTaskIDByName(taskName)
+	if err != nil {
+		fmt.Printf("Error resolving task name to ID: %v\n", err)
+		return ""
+	}
+
+	content, err := logStore.GetByTaskID(taskID)
 	if err != nil {
 		fmt.Printf("Error reading log from database: %v\n", err)
 		return ""
@@ -33,5 +52,12 @@ func GetLogContent(taskName string) string {
 
 // ClearLog clears the log for a specific task
 func ClearLog(taskName string) error {
-	return logStore.Clear(taskName)
+	// Resolve task name to ID
+	store := GetSharedStore()
+	taskID, err := store.GetTaskIDByName(taskName)
+	if err != nil {
+		return fmt.Errorf("failed to resolve task name to ID: %w", err)
+	}
+
+	return logStore.Clear(taskID)
 }

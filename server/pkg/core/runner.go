@@ -17,14 +17,7 @@ func Run(opts Options, logger func(string, string)) (Stats, error) {
 	// Load Cache if enabled
 	var cache *Cache
 	if opts.OpenCache {
-		// Use the same cache path as the API
-		hlinkHome := os.Getenv("HLINK_HOME")
-		if hlinkHome == "" {
-			homeDir, _ := os.UserHomeDir()
-			hlinkHome = filepath.Join(homeDir, ".hlink")
-		}
-		cachePath := filepath.Join(hlinkHome, "cache-array.json")
-		cache = NewCache(cachePath)
+		cache = NewCache()
 		cache.SetTaskName(opts.Name) // Set task name for cache isolation
 		if logger != nil {
 			logger("INFO", fmt.Sprintf("Cache enabled for task: %s", opts.Name))

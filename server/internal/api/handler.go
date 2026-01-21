@@ -655,67 +655,53 @@ func (h *Handler) ClearTaskLog(c *gin.Context) {
 
 func (h *Handler) GetCache(c *gin.Context) {
 	taskName := c.Query("taskName")
+	if taskName == "" {
+		ErrorMsg(c, "taskName parameter is required")
+		return
+	}
+
 	cacheStore := &cache.Store{}
 
+	// Resolve task name to ID
+	taskStore := task.GetSharedStore()
+	taskID, err := taskStore.GetTaskIDByName(taskName)
+	if err != nil {
+		ErrorMsg(c, fmt.Sprintf("任务不存在: %v", err))
+		return
+	}
+
+	// Get cache for specific task
+	files, err := cacheStore.GetByTaskID(taskID)
+	if err != nil {
+		ErrorMsg(c, fmt.Sprintf("读取缓存失败: %v", err))
+		return
+	}
+
+	// Build JSON manually
 	var jsonContent string
-	var err error
-
-	if taskName != "" {
-		// Get cache for specific task
-		files, err := cacheStore.GetByTaskName(taskName)
-		if err != nil {
-			ErrorMsg(c, fmt.Sprintf("读取缓存失败: %v", err))
-			return
-		}
-
-		// Build JSON manually
-		if len(files) == 0 {
-			jsonContent = "[]"
-		} else {
-			var builder strings.Builder
-			builder.WriteString("[\n")
-			for i, file := range files {
-				builder.WriteString("  \"")
-				builder.WriteString(strings.ReplaceAll(file, "\"", "\\\""))
-				builder.WriteString("\"")
-				if i < len(files)-1 {
-					builder.WriteString(",")
-				}
-				builder.WriteString("\n")
-			}
-			builder.WriteString("]")
-			jsonContent = builder.String()
-		}
+	if len(files) == 0 {
+		jsonContent = "[]"
 	} else {
-		// Get all cache (backward compatibility)
-		jsonContent, err = cacheStore.GetAllAsJSON()
-		if err != nil {
-			ErrorMsg(c, fmt.Sprintf("读取缓存失败: %v", err))
-			return
+		var builder strings.Builder
+		builder.WriteString("[\n")
+		for i, file := range files {
+			builder.WriteString("  \"")
+			builder.WriteString(strings.ReplaceAll(file, "\"", "\\\""))
+			builder.WriteString("\"")
+			if i < len(files)-1 {
+				builder.WriteString(",")
+			}
+			builder.WriteString("\n")
 		}
+		builder.WriteString("]")
+		jsonContent = builder.String()
 	}
 
 	Success(c, jsonContent)
 }
 
 func (h *Handler) UpdateCache(c *gin.Context) {
-	var body struct {
-		Content string `json:"content"`
-	}
-	if err := c.ShouldBindJSON(&body); err != nil {
-		Error(c, err)
-		return
-	}
-
-	cacheStore := &cache.Store{}
-
-	// Update cache from JSON string
-	if err := cacheStore.SetFromJSON(body.Content); err != nil {
-		Error(c, err)
-		return
-	}
-
-	Success(c, true)
+	ErrorMsg(c, "UpdateCache API is deprecated and no longer supported")
 }
 
 func (h *Handler) GetCacheLog(c *gin.Context) {

@@ -19,35 +19,23 @@ services:
       timeout: 5s
       retries: 5
 
-  backend:
+  app:
     build:
-      context: ./server
+      context: .
       dockerfile: Dockerfile
-    container_name: fasaxi-backend
+    container_name: fasaxi-app
     environment:
       - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=15432
+      - POSTGRES_PORT=5432
       - POSTGRES_USER=${POSTGRES_USER:-fasaxi}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-fasaxi_password}
       - POSTGRES_DB=${POSTGRES_DB:-fasaxi_linker}
+      - STATIC_PATH=/app/static
     ports:
       - "19090:9090"
     depends_on:
       postgres:
         condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - fasaxi-network
-
-  frontend:
-    build:
-      context: .
-      dockerfile: web/Dockerfile
-    container_name: fasaxi-frontend
-    ports:
-      - "15170:80"
-    depends_on:
-      - backend
     restart: unless-stopped
     networks:
       - fasaxi-network

@@ -33,3 +33,4 @@ dist-ssr
 /plans
 .ace-tool/
 acetest-*
+.env

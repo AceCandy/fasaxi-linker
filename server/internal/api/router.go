@@ -1,6 +1,10 @@
 package api
 
 import (
+	"net/http"
+	"os"
+	"path/filepath"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -66,6 +70,28 @@ func SetupRouter(h *Handler) *gin.Engine {
 		cache.PUT("/", h.UpdateCache)
 		cache.GET("/log", h.GetCacheLog)
 		cache.DELETE("/log", h.ClearCacheLog)
+	}
+
+	// Serve static files (frontend)
+	staticPath := os.Getenv("STATIC_PATH")
+	if staticPath == "" {
+		staticPath = "./static"
+	}
+
+	// Check if static directory exists
+	if _, err := os.Stat(staticPath); err == nil {
+		// Serve static assets (js, css, images, etc.)
+		r.Static("/assets", filepath.Join(staticPath, "assets"))
+
+		// Serve index.html for all non-API routes (SPA fallback)
+		r.NoRoute(func(c *gin.Context) {
+			// Skip API routes
+			if len(c.Request.URL.Path) >= 4 && c.Request.URL.Path[:4] == "/api" {
+				c.JSON(http.StatusNotFound, gin.H{"error": "API endpoint not found"})
+				return
+			}
+			c.File(filepath.Join(staticPath, "index.html"))
+		})
 	}
 
 	return r
