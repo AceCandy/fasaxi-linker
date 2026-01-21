@@ -309,3 +309,221 @@ func (s *Store) insertConfig(ctx context.Context, tx pgx.Tx, c *Config) error {
 	c.ID = id
 	return nil
 }
+
+// AddTask inserts a single task and returns its ID
+func (s *Store) AddTask(t Task) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool := db.GetPool()
+	if pool == nil {
+		return 0, fmt.Errorf("database connection pool is not initialized")
+	}
+
+	pathsMappingJSON, err := json.Marshal(t.PathsMapping)
+	if err != nil {
+		return 0, fmt.Errorf("failed to marshal paths_mapping: %w", err)
+	}
+
+	includeJSON, err := json.Marshal(t.Include)
+	if err != nil {
+		return 0, fmt.Errorf("failed to marshal include: %w", err)
+	}
+
+	excludeJSON, err := json.Marshal(t.Exclude)
+	if err != nil {
+		return 0, fmt.Errorf("failed to marshal exclude: %w", err)
+	}
+
+	query := `
+		INSERT INTO tasks (
+			name, type, paths_mapping, include_patterns, exclude_patterns,
+			save_mode, open_cache, mkdir_if_single, delete_dir, keep_dir_struct,
+			schedule_type, schedule_value, reverse, config, config_id, is_watching, watch_error,
+			updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, CURRENT_TIMESTAMP)
+		RETURNING id
+	`
+
+	var id int
+	err = pool.QueryRow(ctx, query,
+		t.Name, t.Type, pathsMappingJSON, includeJSON, excludeJSON,
+		t.SaveMode, t.OpenCache, t.MkdirIfSingle, t.DeleteDir, t.KeepDirStruct,
+		t.ScheduleType, t.ScheduleValue, t.Reverse, t.Config, t.ConfigID, t.IsWatching, t.WatchError,
+	).Scan(&id)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert task: %w", err)
+	}
+
+	return id, nil
+}
+
+// UpdateTask updates a single task by ID
+func (s *Store) UpdateTask(t Task) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool := db.GetPool()
+	if pool == nil {
+		return fmt.Errorf("database connection pool is not initialized")
+	}
+
+	pathsMappingJSON, err := json.Marshal(t.PathsMapping)
+	if err != nil {
+		return fmt.Errorf("failed to marshal paths_mapping: %w", err)
+	}
+
+	includeJSON, err := json.Marshal(t.Include)
+	if err != nil {
+		return fmt.Errorf("failed to marshal include: %w", err)
+	}
+
+	excludeJSON, err := json.Marshal(t.Exclude)
+	if err != nil {
+		return fmt.Errorf("failed to marshal exclude: %w", err)
+	}
+
+	query := `
+		UPDATE tasks SET
+			name = $1, type = $2, paths_mapping = $3, include_patterns = $4, exclude_patterns = $5,
+			save_mode = $6, open_cache = $7, mkdir_if_single = $8, delete_dir = $9, keep_dir_struct = $10,
+			schedule_type = $11, schedule_value = $12, reverse = $13, config = $14, config_id = $15,
+			is_watching = $16, watch_error = $17, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $18
+	`
+
+	result, err := pool.Exec(ctx, query,
+		t.Name, t.Type, pathsMappingJSON, includeJSON, excludeJSON,
+		t.SaveMode, t.OpenCache, t.MkdirIfSingle, t.DeleteDir, t.KeepDirStruct,
+		t.ScheduleType, t.ScheduleValue, t.Reverse, t.Config, t.ConfigID,
+		t.IsWatching, t.WatchError, t.ID,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to update task: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("task with id %d not found", t.ID)
+	}
+
+	return nil
+}
+
+// DeleteTask deletes a single task by ID
+func (s *Store) DeleteTask(taskID int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool := db.GetPool()
+	if pool == nil {
+		return fmt.Errorf("database connection pool is not initialized")
+	}
+
+	query := `DELETE FROM tasks WHERE id = $1`
+	result, err := pool.Exec(ctx, query, taskID)
+	if err != nil {
+		return fmt.Errorf("failed to delete task: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("task with id %d not found", taskID)
+	}
+
+	return nil
+}
+
+// AddConfig inserts a single config and returns its ID
+func (s *Store) AddConfig(c *Config) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool := db.GetPool()
+	if pool == nil {
+		return 0, fmt.Errorf("database connection pool is not initialized")
+	}
+
+	query := `
+		INSERT INTO configs (name, detail, updated_at)
+		VALUES ($1, $2::jsonb, CURRENT_TIMESTAMP)
+		RETURNING id
+	`
+
+	var id int
+	if err := pool.QueryRow(ctx, query, c.Name, c.Detail).Scan(&id); err != nil {
+		return 0, fmt.Errorf("failed to insert config: %w", err)
+	}
+
+	c.ID = id
+	return id, nil
+}
+
+// UpdateConfig updates a single config by ID
+func (s *Store) UpdateConfig(c Config) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool := db.GetPool()
+	if pool == nil {
+		return fmt.Errorf("database connection pool is not initialized")
+	}
+
+	query := `
+		UPDATE configs SET
+			name = $1, detail = $2::jsonb, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $3
+	`
+
+	result, err := pool.Exec(ctx, query, c.Name, c.Detail, c.ID)
+	if err != nil {
+		return fmt.Errorf("failed to update config: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("config with id %d not found", c.ID)
+	}
+
+	return nil
+}
+
+// DeleteConfig deletes a single config by ID
+func (s *Store) DeleteConfig(configID int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool := db.GetPool()
+	if pool == nil {
+		return fmt.Errorf("database connection pool is not initialized")
+	}
+
+	query := `DELETE FROM configs WHERE id = $1`
+	result, err := pool.Exec(ctx, query, configID)
+	if err != nil {
+		return fmt.Errorf("failed to delete config: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("config with id %d not found", configID)
+	}
+
+	return nil
+}

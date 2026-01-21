@@ -11,8 +11,8 @@ import (
 )
 
 type Service struct {
-	store         *task.Store
-	tasks         []task.Task
+	store *task.Store
+	// tasks         []task.Task // Removed: redundant cache
 	configs       []task.Config
 	configsByID   map[int]task.Config
 	configsByName map[string]task.Config
@@ -21,14 +21,13 @@ type Service struct {
 
 func NewService() (*Service, error) {
 	store := task.GetSharedStore()
-	tasks, configs, err := store.Load()
+	_, configs, err := store.Load() // Ignore tasks
 	if err != nil {
 		return nil, err
 	}
 
 	s := &Service{
 		store:   store,
-		tasks:   tasks,
 		configs: configs,
 	}
 	s.rebuildMap()
@@ -48,33 +47,11 @@ func (s *Service) rebuildMap() {
 func (s *Service) Reload() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	tasks, configs, err := s.store.Load()
+	_, configs, err := s.store.Load() // Ignore tasks
 	if err != nil {
 		return err
 	}
-	s.tasks = tasks
 	s.configs = configs
-	s.rebuildMap()
-	return nil
-}
-
-func (s *Service) save() error {
-	// Re-read tasks to avoid overwriting changes from TaskService
-	// There is still a race condition here if TaskService saves between Load and Save.
-	// In a real app, Store should be a singleton with internal locking for the whole DB.
-	// Current architecture with multiple services having their own store instance is flawed for shared file.
-	// Quick fix: TaskService and ConfigService should probably share the same Store pointer passed from main.
-	// But refactoring that now is too much.
-	// Let's just try to be safe: Load -> Update Configs -> Save.
-
-	tasks, _, err := s.store.Load()
-	if err == nil {
-		s.tasks = tasks // update local tasks
-	}
-
-	if err := s.store.Save(s.tasks, s.configs); err != nil {
-		return err
-	}
 	s.rebuildMap()
 	return nil
 }
@@ -391,9 +368,16 @@ func (s *Service) Add(c task.Config, detail string) error {
 		c.Detail = jsonDetail
 	}
 
+	// 使用单条插入
+	id, err := s.store.AddConfig(&c)
+	if err != nil {
+		return err
+	}
+	c.ID = id
+
 	s.configs = append(s.configs, c)
 	s.rebuildMap()
-	return s.save()
+	return nil
 }
 
 func (s *Service) UpdateByID(id int, c task.Config, detail string) error {
@@ -439,6 +423,11 @@ func (s *Service) UpdateByID(id int, c task.Config, detail string) error {
 
 	existing.Name = c.Name
 
+	// 使用单条更新
+	if err := s.store.UpdateConfig(existing); err != nil {
+		return err
+	}
+
 	// Update list
 	for i, conf := range s.configs {
 		if conf.ID == id {
@@ -447,7 +436,7 @@ func (s *Service) UpdateByID(id int, c task.Config, detail string) error {
 		}
 	}
 	s.rebuildMap()
-	return s.save()
+	return nil
 }
 
 func (s *Service) Delete(id int) error {
@@ -456,6 +445,11 @@ func (s *Service) Delete(id int) error {
 
 	if _, ok := s.configsByID[id]; !ok {
 		return fmt.Errorf("config %d not found", id)
+	}
+
+	// 使用单条删除
+	if err := s.store.DeleteConfig(id); err != nil {
+		return err
 	}
 
 	// Remove from list
@@ -467,5 +461,5 @@ func (s *Service) Delete(id int) error {
 	}
 	s.configs = newConfigs
 	s.rebuildMap()
-	return s.save()
+	return nil
 }

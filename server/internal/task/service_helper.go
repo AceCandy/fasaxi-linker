@@ -18,22 +18,14 @@ func (s *Service) getTaskOptions(t Task) core.Options {
 
 	// Priority 2: Fallback to config lookup for legacy tasks or tasks without synced fields
 	// Reload configs to ensure we have the latest version from disk
-	// This is important because ConfigService might have updated them
 	_, configs, err := s.store.Load()
 
 	var lookupConfigs []Config
 	if err == nil {
 		lookupConfigs = configs
-		// Update local cache as well
-		s.mu.Lock()
-		s.configs = configs
-		s.mu.Unlock()
 	} else {
-		// Log error if critical, or skip if safe
-		fmt.Printf("⚠️ 加载配置失败: %v。使用缓存配置。\n", err)
-		s.mu.RLock()
-		lookupConfigs = s.configs
-		s.mu.RUnlock()
+		// Log error
+		fmt.Printf("⚠️ 加载配置失败: %v。将使用默认配置。\n", err)
 	}
 
 	if t.ConfigID != 0 || t.Config != "" {

@@ -3,8 +3,6 @@ package task
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sync"
 
 	"github.com/fasaxi-linker/servergo/pkg/core"
@@ -15,7 +13,7 @@ type Service struct {
 	tasks    []Task
 	tasksMap map[string]Task
 	mu       sync.RWMutex
-	configs  []Config
+	// configs  []Config // Removed: redundant cache
 
 	// Configs (cached but managed by config service usually, or we share store?)
 	// Ideally we separate ConfigService, but Store is shared.
@@ -29,7 +27,7 @@ type Service struct {
 
 func NewService() (*Service, error) {
 	store := NewStore()
-	tasks, configs, err := store.Load()
+	tasks, _, err := store.Load() // Ignore configs
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +35,6 @@ func NewService() (*Service, error) {
 	s := &Service{
 		store:    store,
 		tasks:    tasks,
-		configs:  configs,
 		tasksMap: make(map[string]Task),
 		watchers: make(map[string]*core.Watcher),
 	}
@@ -75,26 +72,6 @@ func (s *Service) Get(name string) (Task, bool) {
 }
 
 // GetConfigByName returns the configuration by name
-func (s *Service) GetConfigByName(name string) (Config, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	for _, config := range s.configs {
-		if config.Name == name {
-			return config, true
-		}
-	}
-	return Config{}, false
-}
-
-// Helper to save tasks preserving configs
-func (s *Service) saveTasks() error {
-	// Re-read configs to avoid overwriting changes from ConfigService
-	_, configs, err := s.store.Load()
-	if err == nil {
-		s.configs = configs // update local configs
-	}
-	return s.store.Save(s.tasks, s.configs)
-}
 
 func (s *Service) Add(t Task) error {
 	s.mu.Lock()
@@ -104,50 +81,70 @@ func (s *Service) Add(t Task) error {
 		return fmt.Errorf("task %s already exists", t.Name)
 	}
 
+	// 使用单任务插入，获取数据库分配的 ID
+	id, err := s.store.AddTask(t)
+	if err != nil {
+		return err
+	}
+	t.ID = id
+
 	s.tasks = append(s.tasks, t)
 	s.rebuildMap()
-	return s.saveTasks()
+	return nil
 }
 
 func (s *Service) Update(prevName string, t Task) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, ok := s.tasksMap[prevName]; !ok {
+	existing, ok := s.tasksMap[prevName]
+	if !ok {
 		return fmt.Errorf("task %s does not exist", prevName)
 	}
 
-	for i, existing := range s.tasks {
-		if existing.Name == prevName {
+	// 保留原任务的 ID，确保更新时使用相同的 ID
+	t.ID = existing.ID
+
+	// 使用单任务更新
+	if err := s.store.UpdateTask(t); err != nil {
+		return err
+	}
+
+	for i, ex := range s.tasks {
+		if ex.Name == prevName {
 			s.tasks[i] = t
 			break
 		}
 	}
 	s.rebuildMap()
-	return s.saveTasks()
+	return nil
 }
 
 func (s *Service) Delete(name string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	found := false
+	existing, ok := s.tasksMap[name]
+	if !ok {
+		return fmt.Errorf("task %s not found", name)
+	}
+
+	// 使用单任务删除
+	if err := s.store.DeleteTask(existing.ID); err != nil {
+		return err
+	}
+
 	var newTasks []Task
 	for _, t := range s.tasks {
 		if t.Name == name {
-			found = true
 			continue
 		}
 		newTasks = append(newTasks, t)
 	}
 
-	if !found {
-		return fmt.Errorf("task %s not found", name)
-	}
-
 	s.tasks = newTasks
 	s.rebuildMap()
-	return s.saveTasks()
+	return nil
 }
 
 // Watcher methods
@@ -180,12 +177,12 @@ func (s *Service) StartWatch(name string, logger func(string, string)) error {
 
 	s.watchers[name] = w
 
-	// Save watch state
-	go func() {
-		if err := s.saveWatchState(); err != nil {
-			fmt.Printf("⚠️ 保存监听状态失败: %v\n", err)
-		}
-	}()
+	// Success: update watching state in DB
+	if task, ok := s.Get(name); ok {
+		task.IsWatching = true
+		task.WatchError = ""
+		s.Update(name, task)
+	}
 
 	return nil
 }
@@ -236,13 +233,6 @@ func (s *Service) StartWatchWithOptions(name string, logger func(string, string)
 		s.Update(name, task)
 	}
 
-	// Save watch state
-	go func() {
-		if err := s.saveWatchState(); err != nil {
-			fmt.Printf("⚠️ 保存监听状态失败: %v\n", err)
-		}
-	}()
-
 	return nil
 }
 
@@ -266,13 +256,6 @@ func (s *Service) StopWatch(name string) error {
 		s.Update(name, task)
 	}
 
-	// Save watch state in a goroutine to avoid blocking
-	go func() {
-		if err := s.saveWatchState(); err != nil {
-			fmt.Printf("⚠️ 保存监听状态失败: %v\n", err)
-		}
-	}()
-
 	return nil
 }
 
@@ -283,114 +266,59 @@ func (s *Service) IsWatching(name string) bool {
 	return ok
 }
 
-// saveWatchState saves the current watching state to disk
-func (s *Service) saveWatchState() error {
-	s.wMu.RLock()
-	watchingTasks := make([]string, 0, len(s.watchers))
-	for name := range s.watchers {
-		watchingTasks = append(watchingTasks, name)
-	}
-	s.wMu.RUnlock()
-
-	// Get hlink home directory
-	hlinkHome := os.Getenv("HLINK_HOME")
-	if hlinkHome == "" {
-		homeDir, _ := os.UserHomeDir()
-		hlinkHome = filepath.Join(homeDir, ".hlink")
-	}
-	watchStateFile := filepath.Join(hlinkHome, "watch-state.json")
-
-	// Create directory if it doesn't exist
-	if err := os.MkdirAll(filepath.Dir(watchStateFile), 0755); err != nil {
-		return fmt.Errorf("failed to create watch state directory: %v", err)
-	}
-
-	// Write watching tasks to file
-	data, err := json.MarshalIndent(watchingTasks, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal watch state: %v", err)
-	}
-
-	return os.WriteFile(watchStateFile, data, 0644)
-}
-
-// restoreWatchState restores watching state from disk and starts watchers
+// restoreWatchState restores watching state from DB and starts watchers
 func (s *Service) restoreWatchState() error {
-	// Get hlink home directory
-	hlinkHome := os.Getenv("HLINK_HOME")
-	if hlinkHome == "" {
-		homeDir, _ := os.UserHomeDir()
-		hlinkHome = filepath.Join(homeDir, ".hlink")
-	}
-	watchStateFile := filepath.Join(hlinkHome, "watch-state.json")
+	s.mu.RLock()
+	// Make a copy to avoid holding lock while starting watchers
+	tasksCopy := make([]Task, len(s.tasks))
+	copy(tasksCopy, s.tasks)
+	s.mu.RUnlock()
 
-	// Check if watch state file exists
-	if _, err := os.Stat(watchStateFile); os.IsNotExist(err) {
-		// No saved state, that's fine
-		return nil
-	}
+	for _, task := range tasksCopy {
+		if task.IsWatching {
+			// Try to start watcher
+			// We use StartWatch logic but we need to handle failure carefully
+			// Since IsWatching is already true in DB, we don't need to update it if success.
+			// But if failure, we MUST update it to false.
 
-	// Read watch state file
-	data, err := os.ReadFile(watchStateFile)
-	if err != nil {
-		return fmt.Errorf("failed to read watch state file: %v", err)
-	}
+			// Shortcut: directly recreate watcher to avoid extra DB update on success,
+			// but update DB on failure.
 
-	var watchingTasks []string
-	if err := json.Unmarshal(data, &watchingTasks); err != nil {
-		return fmt.Errorf("failed to unmarshal watch state: %v", err)
-	}
-
-	// Restart watching for each task
-	for _, taskName := range watchingTasks {
-		// Check if task still exists
-		s.mu.RLock()
-		task, ok := s.tasksMap[taskName]
-		s.mu.RUnlock()
-
-		if !ok {
-			// Task no longer exists, skip
-			continue
-		}
-
-		// Start watching
-		s.wMu.Lock()
-		if _, alreadyWatching := s.watchers[taskName]; !alreadyWatching {
+			logger := GetLogger(task.Name)
 			opts := s.getTaskOptions(task)
-			logger := GetLogger(taskName)
+
+			s.wMu.Lock()
+			if _, ok := s.watchers[task.Name]; ok {
+				s.wMu.Unlock()
+				continue
+			}
+
 			w, err := core.NewWatcher(opts, logger)
 			if err != nil {
-				fmt.Printf("❌ 创建任务监听器失败 %s: %v\n", taskName, err)
+				fmt.Printf("❌ [Restore] 创建监听器失败 %s: %v\n", task.Name, err)
 				s.wMu.Unlock()
+				// Update DB to reflect failure
+				task.IsWatching = false
+				task.WatchError = err.Error()
+				s.Update(task.Name, task)
 				continue
 			}
 
 			if err := w.Start(); err != nil {
-				fmt.Printf("❌ 启动任务监听失败 %s: %v\n", taskName, err)
+				fmt.Printf("❌ [Restore] 启动监听失败 %s: %v\n", task.Name, err)
 				w.Stop()
-				delete(s.watchers, taskName)
 				s.wMu.Unlock()
-
-				// Update task state: set error message
-				if task, ok := s.Get(taskName); ok {
-					task.IsWatching = false
-					task.WatchError = err.Error()
-					s.Update(taskName, task)
-				}
+				// Update DB to reflect failure
+				task.IsWatching = false
+				task.WatchError = err.Error()
+				s.Update(task.Name, task)
 				continue
 			}
 
-			s.watchers[taskName] = w
+			s.watchers[task.Name] = w
 			s.wMu.Unlock()
 
-			// Success: clear error and set watching state
-			if task, ok := s.Get(taskName); ok {
-				task.IsWatching = true
-				task.WatchError = ""
-				s.Update(taskName, task)
-			}
-
-			fmt.Printf("✅ 已恢复任务监听: %s\n", taskName)
+			fmt.Printf("✅ [Restore] 已恢复监听: %s\n", task.Name)
 		}
 	}
 
@@ -426,7 +354,15 @@ func (s *Service) SyncConfigToTasks(configID int, configName string, configDetai
 
 	if updated {
 		s.rebuildMap()
-		return s.saveTasks()
+		// Save updated tasks one by one to avoid full delete
+		for _, task := range s.tasks {
+			if task.ConfigID == configID {
+				if err := s.store.UpdateTask(task); err != nil {
+					return fmt.Errorf("failed to update task %s: %w", task.Name, err)
+				}
+			}
+		}
+		return nil
 	}
 
 	return nil
