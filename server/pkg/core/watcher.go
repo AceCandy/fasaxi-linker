@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -18,6 +19,7 @@ type Watcher struct {
 	logger   func(string, string) // type, message
 	mu       sync.Mutex
 	isClosed bool
+	memCache sync.Map // L1 Memory Cache
 }
 
 // NewWatcher creates a watcher
@@ -112,7 +114,26 @@ func (w *Watcher) Stop() {
 }
 
 func (w *Watcher) eventLoop() {
-	// Debounce mechanics could be added here
+	// Debounce buffer
+	pendingEvents := make(map[string]struct{})
+	var debounceTimer *time.Timer
+	const debounceInterval = 500 * time.Millisecond
+
+	processEvents := func() {
+		w.mu.Lock()
+		paths := make([]string, 0, len(pendingEvents))
+		for p := range pendingEvents {
+			paths = append(paths, p)
+		}
+		// Clear map
+		pendingEvents = make(map[string]struct{})
+		w.mu.Unlock()
+
+		for _, p := range paths {
+			w.handleAdd(p)
+		}
+	}
+
 	for {
 		select {
 		case event, ok := <-w.internal.Events:
@@ -120,12 +141,18 @@ func (w *Watcher) eventLoop() {
 				return
 			}
 
-			// Handle Create / Write / Rename
+			// 1. Handle Create/Write/Rename for files -> Buffer them
 			if event.Op&(fsnotify.Create|fsnotify.Write|fsnotify.Rename) != 0 {
-				w.handleAdd(event.Name)
+				w.mu.Lock()
+				pendingEvents[event.Name] = struct{}{}
+				if debounceTimer != nil {
+					debounceTimer.Stop()
+				}
+				debounceTimer = time.AfterFunc(debounceInterval, processEvents)
+				w.mu.Unlock()
 			}
 
-			// If directory created, watch it
+			// 2. Handle Directory Create -> Immediate Recursive Add (Blocking but necessary)
 			if event.Op&fsnotify.Create == fsnotify.Create {
 				if info, err := os.Stat(event.Name); err == nil && info.IsDir() {
 					w.AddRecursive(event.Name)
@@ -138,6 +165,11 @@ func (w *Watcher) eventLoop() {
 			}
 			w.logger("ERROR", fmt.Sprintf("❌ 监听错误: %v", err))
 		case <-w.done:
+			w.mu.Lock()
+			if debounceTimer != nil {
+				debounceTimer.Stop()
+			}
+			w.mu.Unlock()
 			return
 		}
 	}
@@ -172,12 +204,19 @@ func (w *Watcher) handleAdd(path string) {
 
 	// Check Cache
 	if w.options.OpenCache {
+		// 1. L1 Memory Cache Check
+		if _, ok := w.memCache.Load(path); ok {
+			return
+		}
+
 		cache := NewCache()
 		cache.SetTaskName(w.options.Name) // Set task name for cache isolation
 
-		// Check if file is already in cache
+		// 2. L2 DB Cache Check
 		if has, _ := cache.Has(path, true); has {
 			w.logger("WARN", fmt.Sprintf("⚠️ 跳过(已缓存): %s", path))
+			// Add to memory cache
+			w.memCache.Store(path, struct{}{})
 			return
 		}
 	}
@@ -226,7 +265,27 @@ func (w *Watcher) handleAdd(path string) {
 				w.logger("ERROR", fmt.Sprintf("❌ 写入缓存失败: %v", err))
 			} else {
 				w.logger("INFO", fmt.Sprintf("💾 已加入缓存: %s", path))
+				// Add to memory cache
+				w.memCache.Store(path, struct{}{})
 			}
 		}
 	}
+}
+
+// RemoveFromCache removes specific files from memory cache
+func (w *Watcher) RemoveFromCache(files []string) {
+	for _, f := range files {
+		w.memCache.Delete(f)
+	}
+}
+
+// ClearCache clears the entire memory cache
+func (w *Watcher) ClearCache() {
+	// Recreate the map to clear it causes issue if references held elsewhere?
+	// But it's a value in struct.
+	// Safer to scan and delete.
+	w.memCache.Range(func(key, value interface{}) bool {
+		w.memCache.Delete(key)
+		return true
+	})
 }

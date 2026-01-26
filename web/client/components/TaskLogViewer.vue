@@ -11,7 +11,7 @@
           <div class="text-caption text-slate-400 d-flex align-center font-mono">
             {{ taskName }}
             <span class="mx-2 text-slate-600">|</span>
-            <span class="text-primary">{{ logLines.length }} 条记录</span>
+            <span class="text-primary">{{ logs.length }} 条记录</span>
           </div>
         </div>
         <v-spacer></v-spacer>
@@ -21,7 +21,7 @@
             color="grey"
             prepend-icon="mdi-refresh"
             size="small"
-            @click="fetchLog"
+            @click="() => { page = 1; fetchLogs(1, pageSize, true) }"
             :loading="loading"
             class="text-none action-btn font-mono"
           >
@@ -32,7 +32,7 @@
             variant="text"
             prepend-icon="mdi-delete-outline"
             size="small"
-            :disabled="!logLines.length"
+            :disabled="!logs.length"
             @click="handleClearLog"
             class="text-none action-btn font-mono"
           >
@@ -76,22 +76,37 @@
       
       <!-- Log Content -->
       <div class="log-container pa-0 position-relative">
-        <div v-if="loading" class="loading-overlay">
-          <v-progress-circular indeterminate color="primary" size="40"></v-progress-circular>
-        </div>
-        
-        <div v-if="!loading && !filteredLines.length" class="empty-state d-flex flex-column align-center justify-center">
-          <v-icon size="48" color="slate-700" class="mb-3 opacity-50">mdi-text-box-remove-outline</v-icon>
-          <div class="text-slate-500 font-mono">{{ searchText ? '未找到相关日志' : '暂无日志记录' }}</div>
-        </div>
+        <div
+          ref="containerRef"
+          class="log-content custom-scrollbar pa-4 text-body-2"
+          @scroll="onScroll"
+        >
+          <div v-if="displayLogs.length === 0 && !loading" class="empty-state d-flex flex-column align-center justify-center">
+            <v-icon size="48" color="slate-700" class="mb-3 opacity-50">mdi-text-box-remove-outline</v-icon>
+            <div class="text-slate-500 font-mono">{{ searchText ? '未找到相关日志' : '暂无日志记录' }}</div>
+          </div>
 
-        <div v-else class="log-content custom-scrollbar pa-4 text-body-2" ref="logContainer">
-          <div
-            v-for="(line, index) in filteredLines"
-            :key="index"
-            class="log-line mb-1 font-jetbrains"
-            v-html="formatLine(line)"
-          ></div>
+          <div v-else>
+            <div
+              v-for="(entry, index) in displayLogs"
+              :key="index"
+              class="log-line mb-1 font-jetbrains d-flex align-start"
+            >
+              <span class="log-time mr-3 text-no-wrap opacity-70">[{{ formatDate(entry.createdAt || '') }}]</span>
+              <span :class="[getLevelClass(entry.level), 'mr-4', 'font-weight-bold', 'text-no-wrap', 'text-center']" style="min-width: 80px; display: inline-block;">
+                [{{ entry.level }}]
+              </span>
+              <span class="log-message text-break" v-html="formatMessage(entry.message)"></span>
+            </div>
+          </div>
+
+          <div v-if="loading" class="text-center py-2 text-gray-500">
+             <v-progress-circular indeterminate size="20" width="2"></v-progress-circular>
+             <span class="ml-2">加载中...</span>
+          </div>
+          <div v-else-if="!hasMore && displayLogs.length > 0" class="text-center py-2 text-gray-600 text-xs">
+             - 已加载全部日志 -
+          </div>
         </div>
       </div>
     </v-card>
@@ -99,8 +114,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import fetch from '../kit/fetch'
+import type { LogEntry } from '../composables/useTask'
+import { useLog } from '../composables/useTask'
 
 const props = defineProps<{
   modelValue: boolean
@@ -118,82 +135,111 @@ const isOpen = computed({
 
 const searchText = ref('')
 const levelFilter = ref('all')
-const logContent = ref('')
-const loading = ref(false)
+const page = ref(1)
+const pageSize = 200
 
-// 获取日志
-const fetchLog = async () => {
-  if (!props.taskName) return
-  loading.value = true
-  try {
-    logContent.value = await fetch.get<string>('/api/task/log', { name: props.taskName })
-  } catch (e) {
-    console.error('获取日志失败:', e)
-    logContent.value = ''
-  } finally {
-    loading.value = false
+// Use the useLog composable
+const { data: logs, execute: fetchLogs, loading, hasMore } = useLog(props.taskName)
+
+const containerRef = ref<HTMLElement | null>(null)
+const autoScroll = ref(true)
+
+// Reload when visible or name changes
+watch(() => [props.modelValue, props.taskName], ([visible, name]) => {
+  if (visible && name) {
+    page.value = 1
+    fetchLogs(1, pageSize, true)
+    autoScroll.value = true
+  }
+}, { immediate: true })
+
+const onScroll = (e: Event) => {
+  const target = e.target as HTMLElement
+  
+  // Infinite scroll: load more (older logs) when near bottom
+  if (target.scrollTop + target.clientHeight >= target.scrollHeight - 50) {
+     if (!loading.value && hasMore.value) {
+       page.value++
+       fetchLogs(page.value, pageSize, false)
+     }
   }
 }
+
+// No auto-scroll needed since newest logs are at the top
 
 // 清空日志
 const handleClearLog = async () => {
   try {
     await fetch.delete('/api/task/log', { name: props.taskName })
-    logContent.value = ''
+    // Reload logs (clean slate)
+    page.value = 1
+    fetchLogs(1, pageSize, true)
     searchText.value = ''
   } catch (e) {
     console.error('清空日志失败:', e)
   }
 }
 
-// 当打开抽屉或任务名变化时重新获取日志
-watch(() => [props.taskName, props.modelValue], ([, newOpen]) => {
-  if (newOpen && props.taskName) {
-    fetchLog()
-  }
-}, { immediate: true })
-
-// 日志行数组
+// 日志行数组 (Structure is already parsed, just reverse? 
+// No, backend returns ASC (oldest first) or DESC? 
+// Store query: ORDER BY created_at ASC. So logs are Oldest -> Newest.
+// We display them top to bottom. Newest at bottom.
 const logLines = computed(() => {
-  if (!logContent.value) return []
-  return logContent.value
-    .split('\n')
-    .filter(line => line.trim())
-    .reverse()
+  if (!logs.value) return []
+  return logs.value
 })
 
 // 过滤后的日志
-const filteredLines = computed(() => {
+const displayLogs = computed(() => {
   let lines = logLines.value
 
   if (levelFilter.value !== 'all') {
-    const searchPattern = levelFilter.value === 'SUCCESS' ? /(SUCCESS|SUCCEED)/i : new RegExp(levelFilter.value, 'i')
-    lines = lines.filter(line => searchPattern.test(line))
+    const targetLevel = levelFilter.value.toUpperCase()
+    // Map SUCCESS/SUCCEED normalize
+    const isSuccess = targetLevel === 'SUCCESS' || targetLevel === 'SUCCEED'
+    
+    lines = lines.filter(entry => {
+        const entryLevel = entry.level.toUpperCase()
+        if (isSuccess) return entryLevel === 'SUCCESS' || entryLevel === 'SUCCEED'
+        return entryLevel.includes(targetLevel)
+    })
   }
 
   if (searchText.value.trim()) {
     const searchLower = searchText.value.toLowerCase()
-    lines = lines.filter(line => line.toLowerCase().includes(searchLower))
+    lines = lines.filter(entry => entry.message.toLowerCase().includes(searchLower))
   }
 
   return lines
 })
 
-const formatLine = (line: string) => {
-  let cleanLine = line
+const formatDate = (dateStr: string) => {
+    if (!dateStr) return ''
+    const d = new Date(dateStr)
+    // 使用 UTC 方法避免时区转换（DB 存的已经是本地时间）
+    const pad = (n: number) => n.toString().padStart(2, '0')
+    return `${d.getUTCFullYear()}/${pad(d.getUTCMonth()+1)}/${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`
+}
+
+const getLevelClass = (level: string) => {
+    const l = level.toUpperCase()
+    if (l === 'SUCCESS' || l === 'SUCCEED') return 'log-primary'
+    if (l === 'ERROR') return 'log-error'
+    if (l === 'WARN' || l === 'WARNING') return 'log-warn text-warning'
+    if (l === 'INFO') return 'log-info'
+    return 'text-slate-400'
+}
+
+const formatMessage = (msg: string) => {
+  if (!msg) return ''
+  let cleanLine = msg
     .replace(/\u001b\[[0-9;]*m/g, '')
     .replace(/\r/g, '')
     .replace(/\t/g, '    ')
-    .replace(/^\[([^\]]+)\]\s*\[([^\]]+)\]/, '[$1]')
 
   return cleanLine
-    .replace(/\[([\/\d\s:]+)\]/g, '<span class="log-time">[$1]</span>')
-    .replace(/(SUCCESS|SUCCEED)/g, '<span class="log-primary">$1</span>')
-    .replace(/ERROR/g, '<span class="log-error">ERROR</span>')
-    .replace(/INFO/g, '<span class="log-info">INFO</span>')
-    .replace(/WARN/g, '<span class="log-warn">WARN</span>')
-    .replace(/(→|->)/g, '<span class="log-arrow">→</span>')
-    .replace(/→\s*([^\s]+)/g, '→ <span class="log-path">$1</span>')
+    .replace(/(→|->)/g, '<span class="log-arrow font-weight-bold mx-1">→</span>')
+    .replace(/→\s*([^\s]+)/g, '→ <span class="log-path text-decoration-underline text-primary-lighten-2">$1</span>')
 }
 </script>
 

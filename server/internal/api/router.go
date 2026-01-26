@@ -61,13 +61,15 @@ func SetupRouter(h *Handler) *gin.Engine {
 
 		t.GET("/log", h.GetTaskLog)
 		t.DELETE("/log", h.ClearTaskLog)
+		t.DELETE("/cache", h.ClearTaskCache) // Clear all cache for task
 	}
 
 	// Cache
 	cache := api.Group("/cache")
 	{
-		cache.GET("/", h.GetCache)
-		cache.PUT("/", h.UpdateCache)
+		api.GET("/cache", h.GetCache)
+		api.PUT("/cache", h.UpdateCache)    // Deprecated
+		api.DELETE("/cache", h.DeleteCache) // New: Remove specific files
 		cache.GET("/log", h.GetCacheLog)
 		cache.DELETE("/log", h.ClearCacheLog)
 	}

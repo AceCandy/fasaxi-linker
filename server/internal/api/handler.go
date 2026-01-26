@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
-	"strings"
 
 	"github.com/fasaxi-linker/servergo/internal/cache"
 	"github.com/fasaxi-linker/servergo/internal/config"
+	"github.com/fasaxi-linker/servergo/internal/logs"
 	"github.com/fasaxi-linker/servergo/internal/task"
 	"github.com/fasaxi-linker/servergo/pkg/core"
 	"github.com/gin-gonic/gin"
@@ -642,7 +642,30 @@ func (h *Handler) GetWatchStatus(c *gin.Context) {
 
 func (h *Handler) GetTaskLog(c *gin.Context) {
 	name := c.Query("name")
-	Success(c, task.GetLogContent(name))
+	pageStr := c.DefaultQuery("page", "1")
+	pageSizeStr := c.DefaultQuery("pageSize", "200")
+
+	page, _ := strconv.Atoi(pageStr)
+	pageSize, _ := strconv.Atoi(pageSizeStr)
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 200
+	}
+	if pageSize > 1000 {
+		pageSize = 1000 // Limit max page size
+	}
+
+	offset := (page - 1) * pageSize
+
+	// Return structured log entries
+	logEntries := task.GetLogEntries(name, offset, pageSize)
+	if logEntries == nil {
+		logEntries = []logs.LogEntry{} // Return empty array instead of null
+	}
+	Success(c, logEntries)
 }
 
 func (h *Handler) ClearTaskLog(c *gin.Context) {
@@ -670,38 +693,63 @@ func (h *Handler) GetCache(c *gin.Context) {
 		return
 	}
 
-	// Get cache for specific task
-	files, err := cacheStore.GetByTaskID(taskID)
+	// Get cache for specific task with pagination
+	pageStr := c.DefaultQuery("page", "1")
+	pageSizeStr := c.DefaultQuery("pageSize", "10")
+	search := c.Query("search")
+
+	page, _ := strconv.Atoi(pageStr)
+	pageSize, _ := strconv.Atoi(pageSizeStr)
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+
+	files, total, err := cacheStore.GetByTaskIDPaged(taskID, page, pageSize, search)
 	if err != nil {
 		ErrorMsg(c, fmt.Sprintf("读取缓存失败: %v", err))
 		return
 	}
 
-	// Build JSON manually
-	var jsonContent string
-	if len(files) == 0 {
-		jsonContent = "[]"
-	} else {
-		var builder strings.Builder
-		builder.WriteString("[\n")
-		for i, file := range files {
-			builder.WriteString("  \"")
-			builder.WriteString(strings.ReplaceAll(file, "\"", "\\\""))
-			builder.WriteString("\"")
-			if i < len(files)-1 {
-				builder.WriteString(",")
-			}
-			builder.WriteString("\n")
-		}
-		builder.WriteString("]")
-		jsonContent = builder.String()
+	// Return JSON object with list and total
+	if files == nil {
+		files = []cache.CacheEntry{}
 	}
 
-	Success(c, jsonContent)
+	Success(c, gin.H{
+		"list":  files,
+		"total": total,
+	})
 }
 
 func (h *Handler) UpdateCache(c *gin.Context) {
 	ErrorMsg(c, "UpdateCache API is deprecated and no longer supported")
+}
+
+func (h *Handler) DeleteCache(c *gin.Context) {
+	var body struct {
+		TaskName string   `json:"taskName"`
+		Files    []string `json:"files"`
+	}
+	if err := c.BindJSON(&body); err != nil {
+		ErrorMsg(c, "Invalid request body")
+		return
+	}
+
+	if body.TaskName == "" {
+		ErrorMsg(c, "taskName is required")
+		return
+	}
+
+	if err := h.Service.RemoveCache(body.TaskName, body.Files); err != nil {
+		ErrorMsg(c, fmt.Sprintf("删除缓存失败: %v", err))
+		return
+	}
+
+	Success(c, true)
 }
 
 func (h *Handler) GetCacheLog(c *gin.Context) {
@@ -713,5 +761,20 @@ func (h *Handler) GetCacheLog(c *gin.Context) {
 func (h *Handler) ClearCacheLog(c *gin.Context) {
 	// Cache log is now stored in task_logs table
 	// Return success for backward compatibility
+	Success(c, true)
+}
+
+func (h *Handler) ClearTaskCache(c *gin.Context) {
+	taskName := c.Query("taskName")
+	if taskName == "" {
+		ErrorMsg(c, "taskName parameter is required")
+		return
+	}
+
+	if err := h.Service.ClearCache(taskName); err != nil {
+		ErrorMsg(c, fmt.Sprintf("清空缓存失败: %v", err))
+		return
+	}
+
 	Success(c, true)
 }

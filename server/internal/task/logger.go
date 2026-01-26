@@ -32,7 +32,25 @@ func GetLogger(taskName string) func(level, msg string) {
 	}
 }
 
-// GetLogContent reads the log content from database
+// GetLogEntries reads the log entries from database
+func GetLogEntries(taskName string, offset, limit int) []logs.LogEntry {
+	// Resolve task name to ID
+	store := GetSharedStore()
+	taskID, err := store.GetTaskIDByName(taskName)
+	if err != nil {
+		fmt.Printf("Error resolving task name to ID: %v\n", err)
+		return nil
+	}
+
+	entries, err := logStore.GetStructByTaskID(taskID, offset, limit)
+	if err != nil {
+		fmt.Printf("Error reading log from database: %v\n", err)
+		return nil
+	}
+	return entries
+}
+
+// GetLogContent reads the log content from database (Legacy string format)
 func GetLogContent(taskName string) string {
 	// Resolve task name to ID
 	store := GetSharedStore()

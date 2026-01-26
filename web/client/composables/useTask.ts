@@ -2,6 +2,12 @@ import { ref } from 'vue'
 import fetch from '../kit/fetch'
 import type { TTask, TSchedule } from '../../types/shim'
 
+export interface LogEntry {
+    createdAt: string
+    level: string
+    message: string
+}
+
 // 全局状态，避免重复请求
 const globalTaskState = {
     data: ref<TTask[]>([]),
@@ -41,11 +47,11 @@ export function useList() {
         mutate()
     }
 
-    return { 
-        data: globalTaskState.data, 
-        error: globalTaskState.error, 
-        loading: globalTaskState.loading, 
-        mutate 
+    return {
+        data: globalTaskState.data,
+        error: globalTaskState.error,
+        loading: globalTaskState.loading,
+        mutate
     }
 }
 
@@ -124,15 +130,22 @@ export function startWatch(name: string) {
 }
 
 export function useLog(name: string | undefined) {
-    const data = ref<string>('')
+    const data = ref<LogEntry[]>([])
     const error = ref<any>(null)
     const loading = ref(false)
+    const hasMore = ref(true)
 
-    const fetchLog = async () => {
+    const execute = async (page: number = 1, pageSize: number = 200, reset: boolean = false) => {
         if (!name) return
         loading.value = true
         try {
-            data.value = await fetch.get<string>('/api/task/log', { name })
+            const res = await fetch.get<LogEntry[]>(`/api/task/log`, { name, page, pageSize })
+            if (reset) {
+                data.value = res
+            } else {
+                data.value = [...data.value, ...res]
+            }
+            hasMore.value = res.length === pageSize
             error.value = null
         } catch (e) {
             error.value = e
@@ -141,10 +154,12 @@ export function useLog(name: string | undefined) {
         }
     }
 
-    // Initial fetch
-    if (name) fetchLog()
+    // Initial load
+    if (name) {
+        execute(1, 200, true)
+    }
 
-    return { data, error, loading, mutate: fetchLog }
+    return { data, error, loading, hasMore, execute }
 }
 
 export function clearLog(name: string) {

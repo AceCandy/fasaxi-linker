@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/fasaxi-linker/servergo/internal/cache"
 	"github.com/fasaxi-linker/servergo/pkg/core"
 )
 
@@ -364,6 +365,52 @@ func (s *Service) SyncConfigToTasks(configID int, configName string, configDetai
 		}
 		return nil
 	}
+
+	return nil
+}
+
+// RemoveCache removes specific files from cache (DB + Memory)
+func (s *Service) RemoveCache(taskName string, files []string) error {
+	taskID, err := s.store.GetTaskIDByName(taskName)
+	if err != nil {
+		return err
+	}
+
+	// 1. Remove from DB
+	cacheStore := &cache.Store{}
+	if err := cacheStore.Remove(taskID, files); err != nil {
+		return err
+	}
+
+	// 2. Remove from Memory Cache (if watcher is running)
+	s.wMu.RLock()
+	if w, ok := s.watchers[taskName]; ok {
+		w.RemoveFromCache(files)
+	}
+	s.wMu.RUnlock()
+
+	return nil
+}
+
+// ClearCache clears all cache for a task (DB + Memory)
+func (s *Service) ClearCache(taskName string) error {
+	taskID, err := s.store.GetTaskIDByName(taskName)
+	if err != nil {
+		return err
+	}
+
+	// 1. Clear DB
+	cacheStore := &cache.Store{}
+	if err := cacheStore.ClearByTaskID(taskID); err != nil {
+		return err
+	}
+
+	// 2. Clear Memory Cache (if watcher is running)
+	s.wMu.RLock()
+	if w, ok := s.watchers[taskName]; ok {
+		w.ClearCache()
+	}
+	s.wMu.RUnlock()
 
 	return nil
 }

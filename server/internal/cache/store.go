@@ -12,6 +12,12 @@ import (
 // Store manages cache data in PostgreSQL
 type Store struct{}
 
+// CacheEntry represents a cached file with its creation time
+type CacheEntry struct {
+	FilePath  string    `json:"filePath"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
 // GetByTaskID returns cached file paths for a specific task
 func (s *Store) GetByTaskID(taskID int) ([]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -175,4 +181,64 @@ func (s *Store) Remove(taskID int, filePaths []string) error {
 	}
 
 	return nil
+}
+
+// GetByTaskIDPaged returns cached file paths for a specific task with pagination and search
+func (s *Store) GetByTaskIDPaged(taskID, page, pageSize int, search string) ([]CacheEntry, int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool := db.GetPool()
+	if pool == nil {
+		return nil, 0, fmt.Errorf("database connection pool is not initialized")
+	}
+
+	offset := (page - 1) * pageSize
+	var query string
+	var args []interface{}
+	var countQuery string
+	var countArgs []interface{}
+
+	if search != "" {
+		searchPattern := "%" + search + "%"
+		query = `SELECT file_path, created_at FROM cache_files WHERE task_id = $1 AND file_path ILIKE $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4`
+		args = []interface{}{taskID, searchPattern, pageSize, offset}
+
+		countQuery = `SELECT COUNT(*) FROM cache_files WHERE task_id = $1 AND file_path ILIKE $2`
+		countArgs = []interface{}{taskID, searchPattern}
+	} else {
+		query = `SELECT file_path, created_at FROM cache_files WHERE task_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`
+		args = []interface{}{taskID, pageSize, offset}
+
+		countQuery = `SELECT COUNT(*) FROM cache_files WHERE task_id = $1`
+		countArgs = []interface{}{taskID}
+	}
+
+	// Get total count
+	var total int
+	if err := pool.QueryRow(ctx, countQuery, countArgs...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("failed to count cache files: %w", err)
+	}
+
+	// Get data
+	rows, err := pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to query cache files: %w", err)
+	}
+	defer rows.Close()
+
+	var files []CacheEntry
+	for rows.Next() {
+		var entry CacheEntry
+		if err := rows.Scan(&entry.FilePath, &entry.CreatedAt); err != nil {
+			return nil, 0, fmt.Errorf("failed to scan cache file: %w", err)
+		}
+		files = append(files, entry)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	return files, total, nil
 }
