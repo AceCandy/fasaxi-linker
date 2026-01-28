@@ -1,7 +1,7 @@
 <template>
   <div class="h-full p-2">
     <div 
-      class="glass-card h-full flex flex-col group transition-all duration-300 hover:-translate-y-1 hover:shadow-neon"
+      class="glass-card glass-card-interactive h-full flex flex-col group"
       :class="{ 
         'border-primary/50 shadow-neon': data.isWatching,
         'border-error/50 shadow-red-500/20': data.watchError 
@@ -9,7 +9,7 @@
     >
       <!-- 极简标签 (右上角) -->
       <div 
-        class="absolute top-0 right-0 px-2 py-0.5 text-[10px] bg-black/40 backdrop-blur-sm border-b border-l border-white/10 uppercase font-bold tracking-wider z-10"
+        class="absolute top-0 right-0 px-2 py-0.5 text-[10px] bg-t-surface backdrop-blur-sm border-b border-l border-border uppercase font-bold tracking-wider z-10"
         :class="data.type === 'main' ? 'text-primary' : 'text-accent'"
         style="border-bottom-left-radius: 6px;"
       >
@@ -33,9 +33,9 @@
           <div class="flex items-center gap-2">
             <div 
               class="w-2 h-2 rounded-none transition-all duration-300"
-              :class="data.isWatching ? 'bg-success shadow-[0_0_8px_#10B981]' : 'bg-slate-600'"
+              :class="data.isWatching ? 'bg-success shadow-[0_0_8px_#10B981]' : 'bg-text-muted'"
             ></div>
-            <span class="text-xs font-mono font-bold" :class="data.isWatching ? 'text-success' : 'text-slate-500'">
+            <span class="text-xs font-mono font-bold" :class="data.isWatching ? 'text-success' : 'text-text-muted'">
               {{ data.isWatching ? '监听中' : '空闲' }}
             </span>
           </div>
@@ -57,25 +57,25 @@
         </div>
 
         <div v-if="data.pathsMapping?.length" class="overflow-y-auto max-h-[120px] custom-scrollbar pr-1">
-          <div v-for="(mapping, idx) in data.pathsMapping" :key="idx" class="flex items-center gap-2 py-1.5 border-b border-white/5 last:border-0">
+          <div v-for="(mapping, idx) in data.pathsMapping" :key="idx" class="flex items-center gap-2 py-1.5 border-b border-border last:border-0">
             <div class="flex-1 min-w-0 flex items-center">
-              <span class="text-xs text-slate-400 truncate font-mono" :title="mapping.source">{{ mapping.source }}</span>
+              <span class="text-xs text-text-muted truncate font-mono" :title="mapping.source">{{ mapping.source }}</span>
             </div>
             <v-icon icon="mdi-arrow-right-thin" size="14" class="text-primary/50 shrink-0"></v-icon>
             <div class="flex-1 min-w-0 flex items-center justify-end">
-              <span class="text-xs text-slate-200 truncate font-mono" :title="mapping.dest">{{ mapping.dest }}</span>
+              <span class="text-xs text-text truncate font-mono" :title="mapping.dest">{{ mapping.dest }}</span>
             </div>
           </div>
         </div>
       </div>
 
       <!-- 底部控制栏 - 优化布局，突出核心功能 -->
-      <div class="p-3 bg-black/20 border-t border-white/5 space-y-3">
+      <div class="p-3 border-t border-border space-y-3">
         
         <!-- 配置信息 -->
         <div class="flex items-center gap-2 mb-1">
           <button 
-            class="flex items-center gap-1.5 px-2 py-1 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-primary/50 text-[10px] text-slate-300 transition-colors rounded-[2px]"
+            class="flex items-center gap-1.5 px-2 py-1 bg-t-surface hover:bg-t-surface/80 border border-border hover:border-primary/50 text-[10px] text-text-muted transition-colors rounded-[2px]"
             @click="$emit('show-config', { id: data.configId, name: data.config })"
           >
             <v-icon icon="mdi-cog-outline" size="12" class="text-primary"></v-icon>
@@ -89,14 +89,14 @@
           <div class="grid grid-cols-2 gap-2 h-[50px]">
             <!-- 1. 实时监听 (Watch) - Toggle -->
             <button 
-              class="btn-action h-full" 
+              class="btn-action h-full group/btn" 
               :class="data.isWatching 
-                ? 'text-primary bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(0,240,255,0.2)]' 
-                : 'text-slate-400 bg-white/5 border-white/10 hover:text-primary hover:border-primary/30 hover:bg-white/10'"
+                ? 'text-primary bg-primary/10 border-primary/50 shadow-[0_0_15px_rgba(0,240,255,0.2)] hover:bg-primary/20 hover:shadow-[0_0_25px_rgba(0,240,255,0.4)] hover:border-primary' 
+                : 'text-text-muted bg-t-surface border-border hover:border-primary hover:text-primary hover:bg-primary/10 hover:shadow-[0_0_15px_rgba(0,240,255,0.15)]'"
               @click="toggleWatch" 
               :title="data.isWatching ? '停止监控' : '开启监控'"
             >
-              <v-icon :icon="data.isWatching ? 'mdi-eye' : 'mdi-eye-off'" size="24" class="mr-2"></v-icon>
+              <v-icon :icon="data.isWatching ? 'mdi-eye' : 'mdi-eye-off'" size="24" class="mr-2 transition-transform duration-300 group-hover/btn:scale-110"></v-icon>
               <div class="flex flex-col items-start">
                 <span class="text-xs font-bold leading-none">监控</span>
                 <span class="text-[10px] opacity-60 font-mono scale-90 origin-left mt-0.5">{{ data.isWatching ? 'RUNNING' : 'STOPPED' }}</span>
@@ -105,14 +105,14 @@
 
             <!-- 2. 定时执行 (Schedule) - Toggle -->
              <button 
-              class="btn-action h-full"
+              class="btn-action h-full group/btn"
               :class="data.scheduleType 
-                ? 'text-warning bg-warning/10 border-warning/50 shadow-[0_0_15px_rgba(251,146,60,0.2)]' 
-                : 'text-slate-400 bg-white/5 border-white/10 hover:text-warning hover:border-warning/30 hover:bg-white/10'"
-              @click="data.scheduleType ? confirmCancelSchedule() : $emit('set-schedule', data.name)"
+                ? 'text-warning bg-warning/10 border-warning/50 shadow-[0_0_15px_rgba(251,146,60,0.2)] hover:bg-warning/20 hover:shadow-[0_0_25px_rgba(251,146,60,0.4)] hover:border-warning' 
+                : 'text-text-muted bg-t-surface border-border hover:border-warning hover:text-warning hover:bg-warning/10 hover:shadow-[0_0_15px_rgba(251,146,60,0.15)]'"
+              @click="data.scheduleType ? confirmCancelSchedule() : $emit('set-schedule', data)"
               :title="data.scheduleType ? '取消定时' : '设置定时'"
             >
-              <v-icon icon="mdi-clock-outline" size="24" class="mr-2"></v-icon>
+              <v-icon icon="mdi-clock-outline" size="24" class="mr-2 transition-transform duration-300 group-hover/btn:scale-110"></v-icon>
               <div class="flex flex-col items-start">
                 <span class="text-xs font-bold leading-none">定时</span>
                 <span class="text-[10px] opacity-60 font-mono scale-90 origin-left mt-0.5">{{ data.scheduleType ? 'ENABLED' : 'DISABLED' }}</span>
@@ -122,18 +122,23 @@
 
           <!-- 第二行：小工具栏 (执行、日志、编辑、缓存、删除) -->
           <div class="flex gap-1 h-[32px]">
-             <!-- 执行 -->
-             <button class="btn-micro" @click="$emit('play', data.name)" title="立即执行">
-                <v-icon icon="mdi-play" size="16" class="text-success mr-1"></v-icon>
-                <span class="text-[10px]">执行</span>
+             <!-- 执行/停止 -->
+             <button 
+               class="btn-micro" 
+               :class="{ '!border-warning/30 !bg-warning/10': data.isRunning }"
+               @click="data.isRunning ? $emit('stop', data) : $emit('play', data)" 
+               :title="data.isRunning ? '停止执行' : '立即执行'"
+             >
+                <v-icon :icon="data.isRunning ? 'mdi-stop' : 'mdi-play'" size="16" :class="data.isRunning ? 'text-warning mr-1' : 'text-success mr-1'"></v-icon>
+                <span class="text-[10px]">{{ data.isRunning ? '停止' : '执行' }}</span>
              </button>
              <!-- 日志 -->
-             <button class="btn-micro" @click="$emit('show-log', data.name)" title="查看日志">
+             <button class="btn-micro" @click="$emit('show-log', data)" title="查看日志">
                 <v-icon icon="mdi-text-box-search-outline" size="16" class="mr-1"></v-icon>
                 <span class="text-[10px]">日志</span>
              </button>
              <!-- 编辑 -->
-             <button class="btn-micro" @click="$emit('edit', data.name)" title="编辑任务">
+             <button class="btn-micro" @click="$emit('edit', data)" title="编辑任务">
                 <v-icon icon="mdi-pencil-outline" size="16" class="mr-1"></v-icon>
                 <span class="text-[10px]">编辑</span>
              </button>
@@ -176,13 +181,14 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'edit', name: string): void
-  (e: 'delete', name: string): void
-  (e: 'play', name: string): void
-  (e: 'set-schedule', name: string): void
-  (e: 'cancel-schedule', name: string): void
+  (e: 'edit', task: TTask): void
+  (e: 'delete', task: TTask): void
+  (e: 'play', task: TTask): void
+  (e: 'stop', task: TTask): void
+  (e: 'set-schedule', task: TTask): void
+  (e: 'cancel-schedule', task: TTask): void
   (e: 'show-config', config: { id?: number; name?: string }): void
-  (e: 'show-log', name: string): void
+  (e: 'show-log', task: TTask): void
   (e: 'show-cache', task: TTask): void
   (e: 'watch-change'): void
 }>()
@@ -219,9 +225,9 @@ const showDialog = (type: DialogType) => {
 
 const handleDialogConfirm = () => {
   if (dialogState.actionType === 'delete') {
-    emit('delete', props.data.name)
+    emit('delete', props.data)
   } else if (dialogState.actionType === 'cancel_schedule') {
-    emit('cancel-schedule', props.data.name)
+    emit('cancel-schedule', props.data)
   }
   dialogState.visible = false
 }
@@ -232,12 +238,17 @@ const confirmCancelSchedule = () => showDialog('cancel_schedule')
 const toggleWatch = async () => {
   watchLoading.value = true
   try {
+    const taskId = props.data.id
+    if (!taskId) {
+      props.data.watchError = '缺少任务ID'
+      return
+    }
     if (props.data.isWatching) {
-      await stopWatch(props.data.name)
+      await stopWatch(taskId)
       props.data.isWatching = false
       props.data.watchError = ''
     } else {
-      await startWatch(props.data.name)
+      await startWatch(taskId)
       props.data.isWatching = true
       props.data.watchError = ''
     }
@@ -253,28 +264,40 @@ const toggleWatch = async () => {
 
 <style scoped>
 .btn-action {
-  @apply w-full flex items-center justify-center rounded-lg border transition-all duration-200 px-4;
+  @apply w-full flex items-center justify-center rounded-lg border transition-all duration-300 px-4;
+  backdrop-filter: blur(4px);
 }
 
 .btn-micro {
-  @apply flex-1 w-full flex items-center justify-center rounded-[2px] bg-white/5 border border-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all duration-200;
-  min-height: 20px;
+  @apply flex-1 w-full flex items-center justify-center rounded-[4px] border transition-all duration-200;
+  background: rgba(var(--color-surface-rgb), 0.5);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+  min-height: 24px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.btn-micro:hover {
+  background: rgba(var(--color-surface-rgb), 0.8);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-neon);
 }
 
 .glass-dropdown {
-  background: rgba(15, 23, 42, 0.9) !important;
+  background: var(--glass-bg-strong) !important;
   backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(0, 240, 255, 0.2) !important;
+  border: 1px solid var(--color-border) !important;
   border-radius: 4px !important;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: var(--shadow-glass) !important;
 }
 
 :deep(.v-list-item) {
-  color: #fff !important;
+  color: var(--color-text) !important;
 }
 
 :deep(.v-list-item:hover) {
-  background: rgba(0, 240, 255, 0.1) !important;
+  background: rgba(var(--color-primary-rgb), 0.1) !important;
 }
 
 .custom-scrollbar::-webkit-scrollbar {

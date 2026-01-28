@@ -2,6 +2,7 @@ package core
 
 // Options defines the task configuration
 type Options struct {
+	TaskID        int                 `json:"taskId"`
 	Name          string              `json:"name"`
 	Type          string              `json:"type"` // "main" or "prune"
 	PathsMapping  map[string][]string `json:"pathsMapping"`

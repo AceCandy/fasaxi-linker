@@ -4,18 +4,18 @@
     
     <!-- 缓存管理弹窗 -->
     <v-dialog v-if="cacheVisible" v-model="cacheVisible" max-width="800" class="glass-dialog" scrollable>
-      <v-card class="glass-content-card border-neon d-flex flex-column" style="height: 80vh; max-height: 800px;">
+      <v-card class="glass-content-card d-flex flex-column" style="height: 80vh; max-height: 800px;">
         <!-- 头部 -->
-        <div class="dialog-header border-b border-neon flex-shrink-0">
+        <div class="glass-dialog-header flex-shrink-0">
           <div class="header-icon-box">
             <v-icon icon="mdi-database" color="primary" size="24"></v-icon>
           </div>
           <div>
             <div class="text-h6 font-weight-bold text-primary font-display">缓存管理</div>
-            <div class="text-caption text-slate-400 font-mono">{{ currentTask?.name }}</div>
+            <div class="text-caption text-text-muted font-mono">{{ currentTask?.name }}</div>
           </div>
           <v-spacer></v-spacer>
-          <v-btn icon="mdi-close" variant="text" density="comfortable" @click="cacheVisible = false" color="grey"></v-btn>
+          <v-btn icon="mdi-close" variant="text" density="comfortable" @click="cacheVisible = false" color="grey" style="color: var(--color-text-muted);"></v-btn>
         </div>
         
         <!-- 内容区域：自适应高度 -->
@@ -58,8 +58,8 @@
                 variant="outlined"
                 density="compact"
                 hide-details
-                bg-color="rgba(15, 23, 42, 0.5)"
-                class="search-input font-mono"
+                bg-color="transparent"
+                class="search-input glass-input-field font-mono"
                 style="max-width: 260px"
               ></v-text-field>
             </div>
@@ -74,11 +74,12 @@
 
             <!-- 列表 + 分页 -->
             <div v-else class="d-flex flex-column flex-grow-1 overflow-hidden">
-              <div class="cache-list custom-scrollbar bg-slate-900/50 border border-slate-700 flex-grow-1" style="overflow-y: auto;">
+              <div class="cache-list custom-scrollbar border flex-grow-1" style="overflow-y: auto; background: rgba(var(--color-background-rgb), 0.3); border-color: var(--color-border) !important;">
                 <div 
                   v-for="(item, index) in cacheFiles" 
                   :key="item.filePath" 
-                  class="cache-item border-b border-slate-800 hover:bg-white/5"
+                  class="cache-item border-b hover:bg-white/5"
+                  style="border-color: var(--color-border) !important;"
                 >
                   <div class="d-flex align-center w-100">
                     <span class="index-badge mr-3 text-slate-500 font-mono" style="min-width: 30px; text-align: right;">{{ (page - 1) * pageSize + index + 1 }}</span>
@@ -98,7 +99,7 @@
                       variant="text" 
                       color="grey"
                       class="delete-btn ml-2 flex-shrink-0"
-                      @click="handleDeleteSingle(item)"
+                      @click="handleDeleteSingle(item.filePath)"
                     >
                       <v-icon size="20" color="error">mdi-close-circle-outline</v-icon>
                       <v-tooltip activator="parent" location="top">移除</v-tooltip>
@@ -143,6 +144,7 @@
             color="grey"
             class="action-btn mr-2 font-mono"
             @click="cacheVisible = false"
+            style="color: var(--color-text-muted);"
           >
             关闭
           </v-btn>
@@ -299,14 +301,14 @@ const formatDate = (dateStr: string) => {
 const loadCache = async () => {
   cacheLoading.value = true
   try {
-    const taskName = currentTask.value?.name
-    if (!taskName) return
+    const taskId = currentTask.value?.id
+    if (!taskId) return
 
     const res = await fetch.get<{
        list: CacheEntry[],
        total: number
     }>(`/api/cache`, { 
-       taskName,
+       taskId,
        page: page.value,
        pageSize,
        search: searchQuery.value
@@ -342,11 +344,11 @@ const confirmDeleteSingle = async () => {
   dialogState.visible = false
   
   try {
-    const taskName = currentTask.value?.name
-    if (!taskName) return
+    const taskId = currentTask.value?.id
+    if (!taskId) return
 
     await fetch.delete('/api/cache', {
-        taskName,
+        taskId,
         files: [filePath]
     })
     
@@ -367,10 +369,10 @@ const handleClearAll = () => {
 const confirmClearAll = async () => {
   clearLoading.value = true
   try {
-    const taskName = currentTask.value?.name
-    if (!taskName) return
+    const taskId = currentTask.value?.id
+    if (!taskId) return
 
-    await fetch.delete('/api/task/cache', { taskName })
+    await fetch.delete('/api/task/cache', { taskId })
     
     loadCache()
     dialogState.visible = false
@@ -392,38 +394,26 @@ watch(cacheVisible, (val) => {
 </script>
 
 <style scoped>
-.glass-content-card {
-  background: rgba(15, 23, 42, 0.95) !important;
-  backdrop-filter: blur(20px) !important;
-  border-radius: 20px !important;
-  box-shadow: 0 0 40px rgba(0, 240, 255, 0.1) !important;
-  overflow: hidden;
-  color: #E0F2F7;
-}
-
-.dialog-header {
-  display: flex;
-  align-items: center;
-  padding: 20px 24px;
-  gap: 12px;
-  background: linear-gradient(to right, rgba(15, 23, 42, 0.95), rgba(0, 0, 0, 0.8));
-}
-
 .header-icon-box {
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: rgba(0, 240, 255, 0.1);
+  background: rgba(var(--color-primary-rgb), 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+  box-shadow: 0 0 10px rgba(var(--color-primary-rgb), 0.2);
 }
 
 .cache-item {
   padding: 10px 16px;
   transition: all 0.2s;
   cursor: default;
+  color: var(--color-text);
+}
+
+.cache-item:hover {
+  background: rgba(var(--color-surface-rgb), 0.6) !important;
 }
 
 .delete-btn {
@@ -439,11 +429,16 @@ watch(cacheVisible, (val) => {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: rgba(30, 41, 59, 0.5);
+  background: rgba(var(--color-surface-rgb), 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-glass);
+}
+
+.empty-state {
+  border: 2px dashed var(--color-border);
+  background: transparent;
 }
 
 /* Custom Scrollbar */
@@ -469,10 +464,10 @@ watch(cacheVisible, (val) => {
 }
 
 .border-neon {
-    border-color: rgba(0, 240, 255, 0.3) !important;
+    border-color: var(--color-border) !important;
 }
 
 :deep(.v-field__input) {
-    color: #E0F2F7 !important;
+    color: var(--color-text) !important;
 }
 </style>

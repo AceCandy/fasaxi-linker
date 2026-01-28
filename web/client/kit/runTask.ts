@@ -38,10 +38,10 @@ export function getOkText(
   return '知道了'
 }
 
-function runTask(name: string, options: TOptions) {
+function runTask(taskId: number, options: TOptions) {
   const { onError, onMessage, onOpen } = options
   if (window.EventSource) {
-    const watched = new window.EventSource(`/api/task/run?name=${name}`)
+    const watched = new window.EventSource(`/api/task/run?taskId=${encodeURIComponent(String(taskId))}`)
     watched.onmessage = (event) => {
       const result = JSON.parse(event.data) as TSendData
       if (onMessage) {

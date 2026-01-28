@@ -43,6 +43,7 @@ func (t *Task) ToCoreOptions() core.Options {
 	}
 
 	opts := core.Options{
+		TaskID:        t.ID,
 		Name:          t.Name,
 		Type:          t.Type,
 		PathsMapping:  pm,
@@ -83,6 +84,7 @@ func (t *Task) ToCoreOptionsWithConfig(config ConfigOptions) core.Options {
 	}
 
 	opts := core.Options{
+		TaskID:        t.ID,
 		Name:          t.Name,
 		Type:          t.Type,
 		PathsMapping:  pm,

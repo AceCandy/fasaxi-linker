@@ -1,58 +1,27 @@
 package core
 
 import (
-	"context"
-	"fmt"
-	"time"
-
 	"github.com/fasaxi-linker/servergo/internal/cache"
-	"github.com/fasaxi-linker/servergo/internal/db"
 )
 
 // Cache manages the list of processed files to avoid duplicates
 // Now uses PostgreSQL instead of file storage
 type Cache struct {
-	store    *cache.Store
-	taskID   int
-	taskName string
+	store  *cache.Store
+	taskID int
 }
 
 // NewCache creates a new Cache instance
 func NewCache() *Cache {
 	return &Cache{
-		store:    &cache.Store{},
-		taskID:   0,
-		taskName: "",
+		store:  &cache.Store{},
+		taskID: 0,
 	}
 }
 
-// SetTaskName sets the task name for this cache instance and resolves it to task ID
-func (c *Cache) SetTaskName(taskName string) {
-	c.taskName = taskName
-	// Resolve task name to ID directly using db pool to avoid import cycle
-	if taskID, err := getTaskIDByName(taskName); err == nil {
-		c.taskID = taskID
-	}
-}
-
-// getTaskIDByName retrieves the task ID for a given task name
-func getTaskIDByName(taskName string) (int, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	pool := db.GetPool()
-	if pool == nil {
-		return 0, fmt.Errorf("database connection pool is not initialized")
-	}
-
-	var taskID int
-	query := `SELECT id FROM tasks WHERE name = $1`
-	err := pool.QueryRow(ctx, query, taskName).Scan(&taskID)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get task ID for name %s: %w", taskName, err)
-	}
-
-	return taskID, nil
+// SetTaskID sets the task ID for this cache instance.
+func (c *Cache) SetTaskID(taskID int) {
+	c.taskID = taskID
 }
 
 // Read reads the cache from database for this task

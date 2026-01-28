@@ -12,7 +12,7 @@ import (
 type Service struct {
 	store    *Store
 	tasks    []Task
-	tasksMap map[string]Task
+	tasksMap map[int]Task
 	mu       sync.RWMutex
 	// configs  []Config // Removed: redundant cache
 
@@ -22,7 +22,7 @@ type Service struct {
 	// PROBLEM: Store.Save now needs Configs.
 	// We need to keep Configs in memory in TaskService or fetch them.
 	// Easier: Just load fresh every time we save? Or cache.
-	watchers map[string]*core.Watcher
+	watchers map[int]*core.Watcher
 	wMu      sync.RWMutex
 }
 
@@ -36,8 +36,8 @@ func NewService() (*Service, error) {
 	s := &Service{
 		store:    store,
 		tasks:    tasks,
-		tasksMap: make(map[string]Task),
-		watchers: make(map[string]*core.Watcher),
+		tasksMap: make(map[int]Task),
+		watchers: make(map[int]*core.Watcher),
 	}
 	s.rebuildMap()
 
@@ -51,9 +51,9 @@ func NewService() (*Service, error) {
 }
 
 func (s *Service) rebuildMap() {
-	s.tasksMap = make(map[string]Task)
+	s.tasksMap = make(map[int]Task)
 	for _, t := range s.tasks {
-		s.tasksMap[t.Name] = t
+		s.tasksMap[t.ID] = t
 	}
 }
 
@@ -65,10 +65,10 @@ func (s *Service) GetAll() []Task {
 	return result
 }
 
-func (s *Service) Get(name string) (Task, bool) {
+func (s *Service) Get(taskID int) (Task, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	t, ok := s.tasksMap[name]
+	t, ok := s.tasksMap[taskID]
 	return t, ok
 }
 
@@ -78,8 +78,10 @@ func (s *Service) Add(t Task) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, ok := s.tasksMap[t.Name]; ok {
-		return fmt.Errorf("task %s already exists", t.Name)
+	for _, existing := range s.tasks {
+		if existing.Name == t.Name {
+			return fmt.Errorf("task %s already exists", t.Name)
+		}
 	}
 
 	// 使用单任务插入，获取数据库分配的 ID
@@ -94,17 +96,25 @@ func (s *Service) Add(t Task) error {
 	return nil
 }
 
-func (s *Service) Update(prevName string, t Task) error {
+func (s *Service) Update(taskID int, t Task) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	existing, ok := s.tasksMap[prevName]
+	existing, ok := s.tasksMap[taskID]
 	if !ok {
-		return fmt.Errorf("task %s does not exist", prevName)
+		return fmt.Errorf("task %d does not exist", taskID)
 	}
 
 	// 保留原任务的 ID，确保更新时使用相同的 ID
 	t.ID = existing.ID
+
+	if t.Name != existing.Name {
+		for _, other := range s.tasks {
+			if other.ID != taskID && other.Name == t.Name {
+				return fmt.Errorf("task %s already exists", t.Name)
+			}
+		}
+	}
 
 	// 使用单任务更新
 	if err := s.store.UpdateTask(t); err != nil {
@@ -112,7 +122,7 @@ func (s *Service) Update(prevName string, t Task) error {
 	}
 
 	for i, ex := range s.tasks {
-		if ex.Name == prevName {
+		if ex.ID == taskID {
 			s.tasks[i] = t
 			break
 		}
@@ -121,13 +131,13 @@ func (s *Service) Update(prevName string, t Task) error {
 	return nil
 }
 
-func (s *Service) Delete(name string) error {
+func (s *Service) Delete(taskID int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	existing, ok := s.tasksMap[name]
+	existing, ok := s.tasksMap[taskID]
 	if !ok {
-		return fmt.Errorf("task %s not found", name)
+		return fmt.Errorf("task %d not found", taskID)
 	}
 
 	// 使用单任务删除
@@ -137,7 +147,7 @@ func (s *Service) Delete(name string) error {
 
 	var newTasks []Task
 	for _, t := range s.tasks {
-		if t.Name == name {
+		if t.ID == taskID {
 			continue
 		}
 		newTasks = append(newTasks, t)
@@ -149,9 +159,9 @@ func (s *Service) Delete(name string) error {
 }
 
 // Watcher methods
-func (s *Service) StartWatch(name string, logger func(string, string)) error {
+func (s *Service) StartWatch(taskID int, logger func(string, string)) error {
 	s.mu.RLock()
-	task, ok := s.tasksMap[name]
+	task, ok := s.tasksMap[taskID]
 	s.mu.RUnlock()
 
 	if !ok {
@@ -161,7 +171,7 @@ func (s *Service) StartWatch(name string, logger func(string, string)) error {
 	s.wMu.Lock()
 	defer s.wMu.Unlock()
 
-	if _, ok := s.watchers[name]; ok {
+	if _, ok := s.watchers[taskID]; ok {
 		return nil // Already watching
 	}
 
@@ -176,21 +186,21 @@ func (s *Service) StartWatch(name string, logger func(string, string)) error {
 		return err
 	}
 
-	s.watchers[name] = w
+	s.watchers[taskID] = w
 
 	// Success: update watching state in DB
-	if task, ok := s.Get(name); ok {
+	if task, ok := s.Get(taskID); ok {
 		task.IsWatching = true
 		task.WatchError = ""
-		s.Update(name, task)
+		s.Update(taskID, task)
 	}
 
 	return nil
 }
 
-func (s *Service) StartWatchWithOptions(name string, logger func(string, string), opts core.Options) error {
+func (s *Service) StartWatchWithOptions(taskID int, logger func(string, string), opts core.Options) error {
 	s.mu.RLock()
-	_, ok := s.tasksMap[name]
+	_, ok := s.tasksMap[taskID]
 	s.mu.RUnlock()
 
 	if !ok {
@@ -200,70 +210,70 @@ func (s *Service) StartWatchWithOptions(name string, logger func(string, string)
 	s.wMu.Lock()
 	defer s.wMu.Unlock()
 
-	if _, ok := s.watchers[name]; ok {
+	if _, ok := s.watchers[taskID]; ok {
 		return nil // Already watching
 	}
 
 	w, err := core.NewWatcher(opts, logger)
 	if err != nil {
 		// Update task state: set error message
-		if task, ok := s.Get(name); ok {
+		if task, ok := s.Get(taskID); ok {
 			task.IsWatching = false
 			task.WatchError = err.Error()
-			s.Update(name, task)
+			s.Update(taskID, task)
 		}
 		return err
 	}
 
 	if err := w.Start(); err != nil {
 		// Update task state: set error message
-		if task, ok := s.Get(name); ok {
+		if task, ok := s.Get(taskID); ok {
 			task.IsWatching = false
 			task.WatchError = err.Error()
-			s.Update(name, task)
+			s.Update(taskID, task)
 		}
 		return err
 	}
 
-	s.watchers[name] = w
+	s.watchers[taskID] = w
 
 	// Success: clear error and set watching state
-	if task, ok := s.Get(name); ok {
+	if task, ok := s.Get(taskID); ok {
 		task.IsWatching = true
 		task.WatchError = ""
-		s.Update(name, task)
+		s.Update(taskID, task)
 	}
 
 	return nil
 }
 
-func (s *Service) StopWatch(name string) error {
+func (s *Service) StopWatch(taskID int) error {
 	s.wMu.Lock()
 	defer s.wMu.Unlock()
 
-	w, ok := s.watchers[name]
+	w, ok := s.watchers[taskID]
 	if !ok {
 		return nil
 	}
 
 	// Stop watcher in a goroutine to avoid blocking
 	go w.Stop()
-	delete(s.watchers, name)
+	delete(s.watchers, taskID)
 
 	// Clear watch state and error
-	if task, ok := s.Get(name); ok {
+	if task, ok := s.Get(taskID); ok {
 		task.IsWatching = false
 		task.WatchError = ""
-		s.Update(name, task)
+		s.Update(taskID, task)
 	}
 
 	return nil
 }
 
-func (s *Service) IsWatching(name string) bool {
+func (s *Service) IsWatching(taskID int) bool {
 	s.wMu.RLock()
 	defer s.wMu.RUnlock()
-	_, ok := s.watchers[name]
+	_, ok := s.watchers[taskID]
 	return ok
 }
 
@@ -285,11 +295,11 @@ func (s *Service) restoreWatchState() error {
 			// Shortcut: directly recreate watcher to avoid extra DB update on success,
 			// but update DB on failure.
 
-			logger := GetLogger(task.Name)
+			logger := GetLogger(task.ID)
 			opts := s.getTaskOptions(task)
 
 			s.wMu.Lock()
-			if _, ok := s.watchers[task.Name]; ok {
+			if _, ok := s.watchers[task.ID]; ok {
 				s.wMu.Unlock()
 				continue
 			}
@@ -301,7 +311,7 @@ func (s *Service) restoreWatchState() error {
 				// Update DB to reflect failure
 				task.IsWatching = false
 				task.WatchError = err.Error()
-				s.Update(task.Name, task)
+				s.Update(task.ID, task)
 				continue
 			}
 
@@ -312,11 +322,11 @@ func (s *Service) restoreWatchState() error {
 				// Update DB to reflect failure
 				task.IsWatching = false
 				task.WatchError = err.Error()
-				s.Update(task.Name, task)
+				s.Update(task.ID, task)
 				continue
 			}
 
-			s.watchers[task.Name] = w
+			s.watchers[task.ID] = w
 			s.wMu.Unlock()
 
 			fmt.Printf("✅ [Restore] 已恢复监听: %s\n", task.Name)
@@ -370,12 +380,7 @@ func (s *Service) SyncConfigToTasks(configID int, configName string, configDetai
 }
 
 // RemoveCache removes specific files from cache (DB + Memory)
-func (s *Service) RemoveCache(taskName string, files []string) error {
-	taskID, err := s.store.GetTaskIDByName(taskName)
-	if err != nil {
-		return err
-	}
-
+func (s *Service) RemoveCache(taskID int, files []string) error {
 	// 1. Remove from DB
 	cacheStore := &cache.Store{}
 	if err := cacheStore.Remove(taskID, files); err != nil {
@@ -384,7 +389,7 @@ func (s *Service) RemoveCache(taskName string, files []string) error {
 
 	// 2. Remove from Memory Cache (if watcher is running)
 	s.wMu.RLock()
-	if w, ok := s.watchers[taskName]; ok {
+	if w, ok := s.watchers[taskID]; ok {
 		w.RemoveFromCache(files)
 	}
 	s.wMu.RUnlock()
@@ -393,12 +398,7 @@ func (s *Service) RemoveCache(taskName string, files []string) error {
 }
 
 // ClearCache clears all cache for a task (DB + Memory)
-func (s *Service) ClearCache(taskName string) error {
-	taskID, err := s.store.GetTaskIDByName(taskName)
-	if err != nil {
-		return err
-	}
-
+func (s *Service) ClearCache(taskID int) error {
 	// 1. Clear DB
 	cacheStore := &cache.Store{}
 	if err := cacheStore.ClearByTaskID(taskID); err != nil {
@@ -407,7 +407,7 @@ func (s *Service) ClearCache(taskName string) error {
 
 	// 2. Clear Memory Cache (if watcher is running)
 	s.wMu.RLock()
-	if w, ok := s.watchers[taskName]; ok {
+	if w, ok := s.watchers[taskID]; ok {
 		w.ClearCache()
 	}
 	s.wMu.RUnlock()

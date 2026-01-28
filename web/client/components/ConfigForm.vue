@@ -2,11 +2,11 @@
   <div class="config-form" :class="{ 'config-form-compact': compact }">
     <!-- Include Rules -->
     <div :class="compact ? 'mb-4' : 'mb-4 wrapper-card pa-4'">
-      <div v-if="!compact" class="text-subtitle-2 font-weight-bold mb-1 d-flex align-center text-slate-400 font-display">
+      <div v-if="!compact" class="text-subtitle-2 font-weight-bold mb-1 d-flex align-center text-text-muted font-display">
         <v-icon icon="mdi-check-circle-outline" size="16" color="success" class="mr-1"></v-icon>
         匹配规则
       </div>
-      <div v-else class="text-caption font-weight-bold mb-1 d-flex align-center text-slate-400 font-display">
+      <div v-else class="text-caption font-weight-bold mb-1 d-flex align-center text-text-muted font-display">
         <v-icon icon="mdi-check-circle-outline" size="14" color="success" class="mr-1"></v-icon>
         匹配规则 (Include)
       </div>
@@ -47,11 +47,11 @@
 
     <!-- Exclude Rules -->
     <div :class="compact ? 'mb-4' : 'mb-4 wrapper-card pa-4'">
-      <div v-if="!compact" class="text-subtitle-2 font-weight-bold mb-1 d-flex align-center text-slate-400 font-display">
+      <div v-if="!compact" class="text-subtitle-2 font-weight-bold mb-1 d-flex align-center text-text-muted font-display">
         <v-icon icon="mdi-close-circle-outline" size="16" color="error" class="mr-1"></v-icon>
         排除规则
       </div>
-      <div v-else class="text-caption font-weight-bold mb-1 d-flex align-center text-slate-400 font-display">
+      <div v-else class="text-caption font-weight-bold mb-1 d-flex align-center text-text-muted font-display">
         <v-icon icon="mdi-close-circle-outline" size="14" color="error" class="mr-1"></v-icon>
         排除规则 (Exclude)
       </div>
@@ -101,7 +101,7 @@
             v-model="formData.keepDirStruct"
             label="保持目录结构"
             color="primary"
-            class="compact-switch text-slate-300"
+            class="compact-switch text-text-muted"
             hide-details
             density="compact"
             inset
@@ -112,7 +112,7 @@
             v-model="formData.openCache"
             label="开启缓存(推荐)"
             color="primary"
-            class="compact-switch text-slate-300"
+            class="compact-switch text-text-muted"
             hide-details
             density="compact"
             inset
@@ -123,7 +123,7 @@
             v-model="formData.mkdirIfSingle"
             label="单文件创建目录"
             color="primary"
-            class="compact-switch text-slate-300"
+            class="compact-switch text-text-muted"
             hide-details
             density="compact"
             inset
@@ -134,7 +134,7 @@
             v-model="formData.deleteDir"
             label="清理空目录"
             color="primary"
-            class="compact-switch text-slate-300"
+            class="compact-switch text-text-muted"
             hide-details
             density="compact"
             inset
@@ -182,26 +182,26 @@ watch(() => props.modelValue, (val) => {
 
 <style scoped>
 .wrapper-card {
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background-color: rgba(15, 23, 42, 0.3);
+  background-color: transparent;
 }
 
 .border-t {
-  border-top: 1px dashed rgba(51, 65, 85, 0.5);
+  border-top: 1px dashed var(--color-border);
 }
 
 .compact-switch :deep(.v-label) {
   font-size: 12px !important; /* Slightly smaller font for compact feel */
   opacity: 0.9;
-  color: #cbd5e1 !important; /* text-slate-300 */
+  color: var(--color-text-muted) !important;
 }
 
 .compact-switch :deep(.v-switch__track) {
   height: 18px; /* Thinner track */
   width: 32px;
   min-width: 32px;
-  background-color: rgba(51, 65, 85, 0.5);
+  background-color: var(--color-border);
 }
 
 .compact-switch :deep(.v-switch__thumb) {
@@ -212,11 +212,11 @@ watch(() => props.modelValue, (val) => {
 /* Custom Input Style for Reference Look */
 :deep(.custom-input .v-field__outline__start) {
   border-radius: 6px 0 0 6px !important;
-  border-color: rgba(51, 65, 85, 0.5) !important;
+  border-color: var(--color-border) !important;
 }
 :deep(.custom-input .v-field__outline__end) {
   border-radius: 0 6px 6px 0 !important;
-  border-color: rgba(51, 65, 85, 0.5) !important;
+  border-color: var(--color-border) !important;
 }
 
 :deep(.custom-input .v-field) {

@@ -21,8 +21,10 @@ const fetch = allowMethods.reduce((result, method) => {
       },
     }
     if ((method === 'get' || method === 'delete') && params) {
-      url += `?${queryString.stringify(params)}`
-    } else {
+      // Use arrayFormat 'none' to serialize arrays as key=value&key=value2
+      // This is compatible with gin's c.QueryArray()
+      url += `?${queryString.stringify(params, { arrayFormat: 'none' })}`
+    } else if (params) {
       fetchOption.body = JSON.stringify(params)
     }
     const result = (await window

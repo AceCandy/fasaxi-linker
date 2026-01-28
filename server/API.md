@@ -90,16 +90,17 @@
 
 ### 3. 获取指定配置
 
-**接口**: `GET /api/config?name={configName}`
+**接口**: `GET /api/config?id={configId}`
 
 **参数**:
-- `name` (string, required): 配置名称
+- `id` (int, required): 配置ID
 
 **响应示例**:
 ```json
 {
   "success": true,
   "data": {
+    "id": 1,
     "name": "config1",
     "detail": "配置详细内容"
   }
@@ -108,10 +109,10 @@
 
 ### 4. 获取配置详细信息
 
-**接口**: `GET /api/config/detail?name={configName}`
+**接口**: `GET /api/config/detail?id={configId}`
 
 **参数**:
-- `name` (string, required): 配置名称
+- `id` (int, required): 配置ID
 
 **描述**: 解析JavaScript配置并返回配置对象
 
@@ -158,7 +159,7 @@
 **请求体**:
 ```json
 {
-  "preName": "old-config-name",
+  "id": 1,
   "name": "new-config-name",
   "detail": "更新的配置内容"
 }
@@ -174,10 +175,10 @@
 
 ### 7. 删除配置
 
-**接口**: `DELETE /api/config?name={configName}`
+**接口**: `DELETE /api/config?id={configId}`
 
 **参数**:
-- `name` (string, required): 要删除的配置名称
+- `id` (int, required): 要删除的配置ID
 
 **响应示例**:
 ```json
@@ -201,6 +202,7 @@
   "success": true,
   "data": [
     {
+      "id": 1,
       "name": "task1",
       "type": "main",
       "pathsMapping": [
@@ -220,6 +222,7 @@
       "scheduleValue": "",
       "reverse": false,
       "config": "",
+      "configId": 1,
       "isWatching": false
     }
   ]
@@ -228,16 +231,17 @@
 
 ### 2. 获取指定任务
 
-**接口**: `GET /api/task?name={taskName}`
+**接口**: `GET /api/task?taskId={taskId}`
 
 **参数**:
-- `name` (string, required): 任务名称
+- `taskId` (int, required): 任务ID
 
 **响应示例**:
 ```json
 {
   "success": true,
   "data": {
+    "id": 1,
     "name": "task1",
     "type": "main",
     "pathsMapping": [
@@ -257,6 +261,7 @@
     "scheduleValue": "",
     "reverse": false,
     "config": "",
+    "configId": 1,
     "isWatching": false
   }
 }
@@ -306,7 +311,7 @@
 **请求体**:
 ```json
 {
-  "preName": "old-task-name",
+  "taskId": 1,
   "name": "new-task-name",
   "type": "main",
   "pathsMapping": [
@@ -325,7 +330,8 @@
   "scheduleType": "",
   "scheduleValue": "",
   "reverse": false,
-  "config": ""
+  "config": "",
+  "configId": 1
 }
 ```
 
@@ -339,10 +345,10 @@
 
 ### 5. 删除任务
 
-**接口**: `DELETE /api/task?name={taskName}`
+**接口**: `DELETE /api/task?taskId={taskId}`
 
 **参数**:
-- `name` (string, required): 要删除的任务名称
+- `taskId` (int, required): 要删除的任务ID
 
 **响应示例**:
 ```json
@@ -356,10 +362,10 @@
 
 ### 1. 运行任务
 
-**接口**: `GET /api/task/run?name={taskName}`
+**接口**: `GET /api/task/run?taskId={taskId}`
 
 **参数**:
-- `name` (string, required): 要运行的任务名称
+- `taskId` (int, required): 要运行的任务ID
 
 **描述**: 执行指定任务，支持Server-Sent Events (SSE)实时推送执行日志
 
@@ -392,7 +398,7 @@ data: {"status":"failed","type":"main","output":"Error: 处理失败"}
 **请求体**:
 ```json
 {
-  "name": "task-name"
+  "taskId": 1
 }
 ```
 
@@ -413,7 +419,7 @@ data: {"status":"failed","type":"main","output":"Error: 处理失败"}
 **请求体**:
 ```json
 {
-  "name": "task-name"
+  "taskId": 1
 }
 ```
 
@@ -429,10 +435,10 @@ data: {"status":"failed","type":"main","output":"Error: 处理失败"}
 
 ### 3. 获取监听状态
 
-**接口**: `GET /api/task/watch/status?name={taskName}`
+**接口**: `GET /api/task/watch/status?taskId={taskId}`
 
 **参数**:
-- `name` (string, required): 任务名称
+- `taskId` (int, required): 任务ID
 
 **响应示例**:
 ```json
@@ -446,15 +452,29 @@ data: {"status":"failed","type":"main","output":"Error: 处理失败"}
 
 ### 1. 获取缓存内容
 
-**接口**: `GET /api/cache/`
+**接口**: `GET /api/cache?taskId={taskId}`
 
-**描述**: 获取系统缓存文件内容
+**参数**:
+- `taskId` (int, required): 任务ID
+- `page` (int, optional): 页码
+- `pageSize` (int, optional): 每页数量
+- `search` (string, optional): 搜索关键词
+
+**描述**: 获取指定任务的缓存文件内容
 
 **响应示例**:
 ```json
 {
   "success": true,
-  "data": "[\"/path/to/file1.jpg\", \"/path/to/file2.png\"]"
+  "data": {
+    "list": [
+      {
+        "filePath": "/path/to/file1.jpg",
+        "createdAt": "2023-12-10T15:30:00Z"
+      }
+    ],
+    "total": 1
+  }
 }
 ```
 
@@ -507,10 +527,10 @@ data: {"status":"failed","type":"main","output":"Error: 处理失败"}
 
 ### 1. 获取任务日志
 
-**接口**: `GET /api/task/log?name={taskName}`
+**接口**: `GET /api/task/log?taskId={taskId}`
 
 **参数**:
-- `name` (string, required): 任务名称
+- `taskId` (int, required): 任务ID
 
 **响应示例**:
 ```json
@@ -522,10 +542,10 @@ data: {"status":"failed","type":"main","output":"Error: 处理失败"}
 
 ### 2. 清空任务日志
 
-**接口**: `DELETE /api/task/log?name={taskName}`
+**接口**: `DELETE /api/task/log?taskId={taskId}`
 
 **参数**:
-- `name` (string, required): 任务名称
+- `taskId` (int, required): 任务ID
 
 **响应示例**:
 ```json
@@ -541,6 +561,7 @@ data: {"status":"failed","type":"main","output":"Error: 处理失败"}
 
 ```json
 {
+  "id": "number",             // 任务ID
   "name": "string",           // 任务名称
   "type": "string",           // 任务类型: "main" 或 "prune"
   "pathsMapping": [           // 路径映射数组
@@ -559,7 +580,8 @@ data: {"status":"failed","type":"main","output":"Error: 处理失败"}
   "scheduleType": "string",   // 调度类型（可选）
   "scheduleValue": "string",  // 调度值（可选）
   "reverse": "boolean",       // 是否反向（prune任务）
-  "config": "string"          // 关联配置名称
+  "config": "string",         // 关联配置名称
+  "configId": "number"        // 关联配置ID
 }
 ```
 
@@ -567,6 +589,7 @@ data: {"status":"failed","type":"main","output":"Error: 处理失败"}
 
 ```json
 {
+  "id": "number",     // 配置ID
   "name": "string",   // 配置名称
   "detail": "string"  // 配置详细内容（JavaScript代码）
 }
@@ -623,21 +646,24 @@ curl -X POST http://localhost:9090/api/task \
     "openCache": true
   }'
 
-# 2. 运行任务（SSE流）
-curl -N http://localhost:9090/api/task/run?name=photo-sync
+# 2. 获取任务列表以获取 taskId
+curl http://localhost:9090/api/task/list
 
-# 3. 开始监听文件变化
+# 3. 运行任务（SSE流）
+curl -N http://localhost:9090/api/task/run?taskId=1
+
+# 4. 开始监听文件变化
 curl -X POST http://localhost:9090/api/task/watch/start \
   -H "Content-Type: application/json" \
-  -d '{"name": "photo-sync"}'
+  -d '{"taskId": 1}'
 
-# 4. 查看任务日志
-curl http://localhost:9090/api/task/log?name=photo-sync
+# 5. 查看任务日志
+curl http://localhost:9090/api/task/log?taskId=1
 
-# 5. 查看缓存内容
-curl http://localhost:9090/api/cache/
+# 6. 查看缓存内容
+curl http://localhost:9090/api/cache?taskId=1
 
-# 6. 更新缓存内容
+# 7. 更新缓存内容
 curl -X PUT -H "Content-Type: application/json" \
   -d '{"content":"[\"/path/to/file1.jpg\", \"/path/to/file2.png\"]"}' \
   http://localhost:9090/api/cache/

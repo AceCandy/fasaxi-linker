@@ -4,10 +4,10 @@ go 1.25.4
 
 require (
 	github.com/bmatcuk/doublestar/v4 v4.9.1
-	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.11.0
 	github.com/jackc/pgx/v5 v5.8.0
+	github.com/rjeczalik/notify v0.9.3
 	github.com/spf13/cobra v1.10.2
 )
 

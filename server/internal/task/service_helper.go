@@ -56,12 +56,12 @@ func (s *Service) getTaskOptions(t Task) core.Options {
 }
 
 // GetOptions 获取任务最终使用的配置（优先使用 config_id 关联最新 configs）
-func (s *Service) GetOptions(name string) (core.Options, error) {
+func (s *Service) GetOptions(taskID int) (core.Options, error) {
 	s.mu.RLock()
-	task, ok := s.tasksMap[name]
+	task, ok := s.tasksMap[taskID]
 	s.mu.RUnlock()
 	if !ok {
-		return core.Options{}, fmt.Errorf("task %s not found", name)
+		return core.Options{}, fmt.Errorf("task %d not found", taskID)
 	}
 	return s.getTaskOptions(task), nil
 }

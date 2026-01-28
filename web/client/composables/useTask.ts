@@ -58,13 +58,13 @@ export function useList() {
 export function useAddOrEdit(options?: { onSuccess?: (data: boolean) => void; onError?: (e: any) => void }) {
     const loading = ref(false)
 
-    const addOrUpdateTask = async (newTask: TTask, currentTask?: string) => {
+    const addOrUpdateTask = async (newTask: TTask, currentTaskId?: number) => {
         loading.value = true
         try {
             const url = '/api/task'
-            const method = currentTask ? fetch.put : fetch.post
-            const params = currentTask
-                ? { preName: currentTask, ...newTask }
+            const method = currentTaskId ? fetch.put : fetch.post
+            const params = currentTaskId
+                ? { taskId: currentTaskId, ...newTask }
                 : newTask
 
             const res = await method<boolean>(url, params as any)
@@ -84,10 +84,10 @@ export function useAddOrEdit(options?: { onSuccess?: (data: boolean) => void; on
 export function useDelete(options?: { onSuccess?: (data: boolean) => void; onError?: (e: any) => void }) {
     const loading = ref(false)
 
-    const rmItem = async (name: string) => {
+    const rmItem = async (taskId: number) => {
         loading.value = true
         try {
-            const res = await fetch.delete<boolean>('/api/task', { name })
+            const res = await fetch.delete<boolean>('/api/task', { taskId })
             options?.onSuccess?.(res)
             return res
         } catch (e) {
@@ -105,14 +105,14 @@ export function useGet(options?: { onSuccess?: (data: TTask) => void; onError?: 
     const data = ref<TTask>()
     const loading = ref(false)
 
-    const getItem = async (name?: string) => {
-        if (!name) {
+    const getItem = async (taskId?: number) => {
+        if (!taskId) {
             data.value = undefined
             return
         }
         loading.value = true
         try {
-            const res = await fetch.get<TTask>('/api/task', { name })
+            const res = await fetch.get<TTask>('/api/task', { taskId })
             data.value = res
             options?.onSuccess?.(res)
         } catch (e) {
@@ -125,27 +125,70 @@ export function useGet(options?: { onSuccess?: (data: TTask) => void; onError?: 
     return { data, getItem, loading }
 }
 
-export function startWatch(name: string) {
-    return fetch.post<boolean>('/api/task/watch/start', { name })
+export function startWatch(taskId: number) {
+    return fetch.post<boolean>('/api/task/watch/start', { taskId })
 }
 
-export function useLog(name: string | undefined) {
+export interface LogFile {
+    name: string
+    type: 'watch' | 'run' | 'cron' | 'unknown'
+    size: number
+    modTime: string
+}
+
+export interface LogResponse {
+    list: LogEntry[]
+    total: number
+    file: string
+}
+
+export function useLogFiles(taskId: number | undefined) {
+    const data = ref<LogFile[]>([])
+    const loading = ref(false)
+
+    const execute = async () => {
+        if (!taskId) return
+        loading.value = true
+        try {
+            const res = await fetch.get<LogFile[]>('/api/task/log/files', { taskId })
+            data.value = res || []
+        } catch (e) {
+            console.error('Failed to load log files:', e)
+            data.value = []
+        } finally {
+            loading.value = false
+        }
+    }
+
+    return { data, loading, execute }
+}
+
+export function useLog(taskId: number | undefined) {
     const data = ref<LogEntry[]>([])
     const error = ref<any>(null)
     const loading = ref(false)
     const hasMore = ref(true)
+    const total = ref(0)
+    const currentFile = ref('')
 
-    const execute = async (page: number = 1, pageSize: number = 200, reset: boolean = false) => {
-        if (!name) return
+    const execute = async (page: number = 1, pageSize: number = 200, reset: boolean = false, file?: string, level?: string, search?: string) => {
+        if (!taskId) return
         loading.value = true
         try {
-            const res = await fetch.get<LogEntry[]>(`/api/task/log`, { name, page, pageSize })
+            const params: Record<string, any> = { taskId, page, pageSize }
+            if (file) params.file = file
+            if (level && level !== 'all') params.level = level
+            if (search) params.search = search
+
+            const res = await fetch.get<LogResponse>('/api/task/log', params)
             if (reset) {
-                data.value = res
+                data.value = res.list || []
             } else {
-                data.value = [...data.value, ...res]
+                data.value = [...data.value, ...(res.list || [])]
             }
-            hasMore.value = res.length === pageSize
+            total.value = res.total || 0
+            currentFile.value = res.file || ''
+            hasMore.value = (res.list?.length || 0) === pageSize
             error.value = null
         } catch (e) {
             error.value = e
@@ -155,27 +198,29 @@ export function useLog(name: string | undefined) {
     }
 
     // Initial load
-    if (name) {
+    if (taskId) {
         execute(1, 200, true)
     }
 
-    return { data, error, loading, hasMore, execute }
+    return { data, error, loading, hasMore, total, currentFile, execute }
 }
 
-export function clearLog(name: string) {
-    return fetch.delete<boolean>('/api/task/log', { name })
+export function clearLog(taskId: number, file?: string) {
+    const params: Record<string, any> = { taskId }
+    if (file) params.file = file
+    return fetch.delete<boolean>('/api/task/log', params)
 }
 
-export function stopWatch(name: string) {
-    return fetch.post<boolean>('/api/task/watch/stop', { name })
+export function stopWatch(taskId: number) {
+    return fetch.post<boolean>('/api/task/watch/stop', { taskId })
 }
 
 export function useCheckConfig() {
     const loading = ref(false)
-    const check = async (name: string) => {
+    const check = async (taskId: number) => {
         loading.value = true
         try {
-            await fetch.get('/api/task/check_config', { name })
+            await fetch.get('/api/task/check_config', { taskId })
         } finally {
             loading.value = false
         }
@@ -183,12 +228,12 @@ export function useCheckConfig() {
     return { check, loading }
 }
 
-export function cancel(name: string) {
-    return fetch.get<boolean>('/api/task/cancel', { name })
+export function cancel(taskId: number) {
+    return fetch.get<boolean>('/api/task/cancel', { taskId })
 }
 
-export function makeDeleteFile(name: string, cancel?: boolean) {
-    return fetch.delete<boolean>('/api/task/files', { name, cancel })
+export function makeDeleteFile(taskId: number, cancel?: boolean) {
+    return fetch.delete<boolean>('/api/task/files', { taskId, cancel })
 }
 
 export function useSchedule(options?: { onSuccess?: (data: boolean) => void; onError?: (e: any) => void }) {
@@ -214,10 +259,10 @@ export function useSchedule(options?: { onSuccess?: (data: boolean) => void; onE
 export function useCancelSchedule(options?: { onSuccess?: (data: boolean) => void; onError?: (e: any) => void }) {
     const loading = ref(false)
 
-    const cancelSchedule = async (name: string) => {
+    const cancelSchedule = async (taskId: number) => {
         loading.value = true
         try {
-            const res = await fetch.delete<boolean>('/api/task/schedule', { name })
+            const res = await fetch.delete<boolean>('/api/task/schedule', { taskId })
             options?.onSuccess?.(res)
             return res
         } catch (e) {

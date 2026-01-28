@@ -3,24 +3,103 @@
 @tailwind utilities;
 
 /* 全局样式变量 - Tech Futuristic Dark Theme */
+/* 全局样式变量 - Tech Futuristic Dark Theme (Default) */
 :root {
+    /* Primary: Cyan Neon #00F0FF */
+    --color-primary-rgb: 0 240 255;
     --color-primary: #00F0FF;
-    /* Cyan Neon */
-    --color-secondary: #4D4DFF;
-    /* Electric Blue */
-    --color-background: #0F172A;
-    /* Slate 950 */
-    --color-surface: rgba(30, 41, 59, 0.4);
-    /* Slate 800 with opacity */
-    --color-text: #E0F2F7;
-    /* Sky 100 */
-    --color-accent: #6D28D9;
-    /* Violet 700 */
 
-    /* 霓虹发光阴影 */
+    /* Secondary: Electric Blue #4D4DFF */
+    --color-secondary-rgb: 77 77 255;
+    --color-secondary: #4D4DFF;
+
+    /* Background: Slate 950 #0F172A */
+    --color-background-rgb: 15 23 42;
+    --color-background: #0F172A;
+
+    /* Surface: Slate 800 glass */
+    --color-surface-rgb: 30 41 59;
+    --color-surface: rgba(30, 41, 59, 0.4);
+
+    /* Text: Sky 100 #E0F2F7 */
+    --color-text-rgb: 224 242 247;
+    --color-text: #E0F2F7;
+
+    /* Text Muted: Slate 400 #94A3B8 */
+    --color-text-muted-rgb: 148 163 184;
+    --color-text-muted: #94a3b8;
+
+    /* Border: Primary with opacity */
+    --color-border-rgb: 0 240 255;
+    --color-border: rgba(0, 240, 255, 0.1);
+
+    /* Accent: #6D28D9 */
+    --color-accent-rgb: 109 40 217;
+    --color-accent: #6D28D9;
+
+    /* 玻璃态背景 */
+    --glass-bg: rgba(15, 23, 42, 0.6);
+    --glass-bg-hover: rgba(15, 23, 42, 0.8);
+    --glass-bg-strong: rgba(15, 23, 42, 0.95);
+
+    /* 阴影 */
     --shadow-neon: 0 0 10px rgba(0, 240, 255, 0.3), 0 0 20px rgba(0, 240, 255, 0.1);
-    --shadow-neon-strong: 0 0 15px rgba(0, 240, 255, 0.5), 0 0 30px rgba(0, 240, 255, 0.3);
     --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+
+    /* 渐变背景 */
+    --app-bg-gradient: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 100%);
+}
+
+/* Light Theme Overrides (Japanese Swiss - Warm Ivory & Coral) */
+[data-theme='light'] {
+    /* Primary: International Orange (Swiss) #FF3B30 */
+    --color-primary-rgb: 255 59 48;
+    --color-primary: #FF3B30;
+
+    /* Secondary: Charcoal #1C1C1E */
+    --color-secondary-rgb: 28 28 30;
+    --color-secondary: #1C1C1E;
+
+    /* Background: Swiss White #F5F5F5 */
+    --color-background-rgb: 245 245 245;
+    --color-background: #F5F5F5;
+
+    /* Surface: Pure White #FFFFFF */
+    --color-surface-rgb: 255 255 255;
+    --color-surface: #FFFFFF;
+
+    /* Text: Pure Black #000000 for max contrast */
+    --color-text-rgb: 0 0 0;
+    --color-text: #000000;
+
+    /* Text Muted: Slate 600 #475569 for better readability */
+    --color-text-muted-rgb: 71 85 105;
+    --color-text-muted: #475569;
+
+    /* Border: Slate 300 #CBD5E1 for crisp definition */
+    --color-border-rgb: 203 213 225;
+    --color-border: #CBD5E1;
+
+    /* Accent: International Orange */
+    --color-accent-rgb: 255 59 48;
+    --color-accent: #FF3B30;
+
+    /* 玻璃态背景 */
+    --glass-bg: rgba(255, 255, 255, 0.9);
+    --glass-bg-hover: #FFFFFF;
+    --glass-bg-strong: #FFFFFF;
+
+    /* 阴影 - 极简扁平，移除光晕感 */
+    --shadow-neon: none;
+    --shadow-glass: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
+    /* 渐变背景 - 纯色 */
+    --app-bg-gradient: #F5F5F5;
+
+    /* 状态色调整 - Swiss Traffic Light */
+    --color-success: #34A853;
+    --color-warning: #FF9500;
+    --color-error: #D93025;
 }
 
 body {
@@ -42,21 +121,36 @@ h6 {
 
 /* 页面背景 - 深色星空渐变 */
 .app-background {
-    background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 100%);
+    background: var(--app-bg-gradient);
     min-height: 100vh;
+    transition: background 0.3s ease;
 }
 
 /* 玻璃态卡片 - 通用 */
 .glass-card {
-    background: rgba(15, 23, 42, 0.6);
+    background: var(--glass-bg);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(0, 240, 255, 0.1);
+    border: 1px solid var(--color-border);
     box-shadow: var(--shadow-glass);
     border-radius: 4px;
     position: relative;
     overflow: hidden;
     color: var(--color-text);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 统一的交互式玻璃卡片效果 */
+.glass-card-interactive {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid var(--color-border);
+}
+
+.glass-card-interactive:hover {
+    transform: translateY(-4px);
+    background: var(--glass-bg-hover);
+    box-shadow: var(--shadow-neon);
+    border-color: var(--color-primary);
 }
 
 .glass-card::before {
@@ -71,9 +165,9 @@ h6 {
 
 /* 玻璃态列表/菜单 */
 .glass-menu {
-    background: rgba(15, 23, 42, 0.95) !important;
+    background: var(--glass-bg-strong) !important;
     backdrop-filter: blur(20px) !important;
-    border: 1px solid rgba(0, 240, 255, 0.2);
+    border: 1px solid var(--color-border) !important;
     box-shadow: var(--shadow-neon) !important;
     border-radius: 4px !important;
 }
@@ -85,18 +179,18 @@ h6 {
 }
 
 ::-webkit-scrollbar-track {
-    background: #0f172a;
+    background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #1e293b;
-    border: 1px solid rgba(0, 240, 255, 0.3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
     border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 240, 255, 0.5);
-    border-color: #00F0FF;
+    background: var(--color-primary);
+    opacity: 0.5;
 }
 
 /* Vuetify 全局覆盖 */
@@ -107,15 +201,15 @@ h6 {
 }
 
 .v-card {
-    background: rgba(30, 41, 59, 0.8) !important;
+    background: var(--glass-bg) !important;
     color: var(--color-text) !important;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--color-border);
 }
 
 /* 去除 Vuetify 默认阴影，使用自定义发光 */
 .v-dialog .v-card {
     box-shadow: var(--shadow-neon) !important;
-    border: 1px solid rgba(0, 240, 255, 0.2) !important;
+    border: 1px solid var(--color-border) !important;
 }
 
 /* 修复容器间距 */
@@ -125,9 +219,16 @@ h6 {
 }
 
 .v-app-bar {
-    background: rgba(15, 23, 42, 0.8) !important;
+    background: var(--glass-bg-strong) !important;
     backdrop-filter: blur(16px) !important;
-    border-bottom: 1px solid rgba(0, 240, 255, 0.1) !important;
+    border-bottom: 1px solid var(--color-border) !important;
+    color: var(--color-text) !important;
+    /* Ensure text color changes */
+}
+
+/* Ensure icons in app bar inherit the correct text color */
+.v-app-bar .v-icon {
+    color: var(--color-text) !important;
 }
 
 .v-main {
@@ -198,6 +299,48 @@ body {
     color: var(--color-primary) !important;
     box-shadow: 0 0 15px rgba(0, 240, 255, 0.2) !important;
     font-family: 'Space Mono', monospace !important;
-    font-size: 12px !important;
     border-radius: 4px !important;
+}
+
+/* Unified Glass Dialog & Modal Styles */
+.glass-content-card {
+    background: var(--glass-bg-strong) !important;
+    backdrop-filter: blur(20px) !important;
+    border-radius: 20px !important;
+    box-shadow: var(--shadow-glass) !important;
+    overflow: hidden;
+    border: 1px solid var(--color-border) !important;
+    color: var(--color-text) !important;
+}
+
+.glass-dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: var(--glass-bg);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.glass-form-section {
+    border: 1px solid var(--color-border);
+    background: rgba(var(--color-surface-rgb), 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.glass-input-field .v-field__outline__start,
+.glass-input-field .v-field__outline__end,
+.glass-input-field .v-field__outline__notch {
+    border-color: var(--color-border) !important;
+}
+
+.glass-input-field .v-field__input {
+    color: var(--color-text) !important;
+    font-family: 'Space Mono', monospace;
+}
+
+.glass-input-field .v-label {
+    color: var(--color-text-muted) !important;
 }

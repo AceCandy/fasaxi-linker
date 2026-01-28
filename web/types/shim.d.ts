@@ -6,6 +6,7 @@ export type TConfig = {
 }
 
 export type TTask = {
+  id?: number
   name: string
   type: TTaskType
   config?: string
@@ -16,11 +17,14 @@ export type TTask = {
   pathsMapping?: { source: string, dest: string }[]
   isWatching?: boolean
   watchError?: string
+  isRunning?: boolean
 }
 
-export type TSchedule = Required<
-  Pick<TTask, 'name' | 'scheduleType' | 'scheduleValue'>
->
+export type TSchedule = {
+  taskId: number
+  scheduleType: 'cron' | 'loop'
+  scheduleValue: string
+}
 
 export type TTaskStatus = 'succeed' | 'failed' | 'ongoing'
 export type TTaskType = 'main' | 'prune'

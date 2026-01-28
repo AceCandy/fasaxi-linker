@@ -2,14 +2,15 @@
   <div class="task-list-wrapper">
     <v-card class="glass-card task-list-card fade-in" elevation="0">
       <!-- 卡片头部 -->
-      <v-card-title class="d-flex align-center py-6 px-8 dialog-header border-b border-neon">
+      <!-- 卡片头部 -->
+      <div class="glass-dialog-header border-b border-neon">
         <div class="d-flex align-center">
           <div class="header-icon-box mr-4">
             <v-icon icon="mdi-clipboard-check-outline" size="28" class="text-primary"></v-icon>
           </div>
           <div>
             <span class="text-h5 font-weight-bold text-primary-glow font-display">任务列表</span>
-            <div class="text-subtitle-2 text-slate-400 font-mono mt-1">管理您的硬链和同步任务</div>
+            <div class="text-subtitle-2 text-text-muted font-mono mt-1">管理您的硬链和同步任务</div>
           </div>
         </div>
         <v-spacer></v-spacer>
@@ -22,7 +23,7 @@
         >
           创建任务
         </v-btn>
-      </v-card-title>
+      </div>
       
       <v-divider class="border-neon opacity-20"></v-divider>
       
@@ -35,12 +36,12 @@
         </div>
 
         <!-- 空状态 -->
-        <div v-else-if="!taskStore.tasks.length" class="empty-state d-flex flex-column align-center justify-center pa-16 text-center rounded-xl border-dashed border-slate-700">
+        <div v-else-if="!taskStore.tasks.length" class="empty-state d-flex flex-column align-center justify-center pa-16 text-center rounded-xl border-dashed">
           <div class="empty-icon-container mb-6">
             <v-icon size="72" color="primary" class="opacity-50 float-animation">mdi-clipboard-text-off-outline</v-icon>
           </div>
-          <div class="text-h6 text-slate-300 mb-2 font-display">暂无任务</div>
-          <div class="text-body-1 text-slate-500 mb-8 font-mono">创建您的第一个硬链任务开始使用</div>
+          <div class="text-h6 text-text mb-2 font-display">暂无任务</div>
+          <div class="text-body-1 text-text-muted mb-8 font-mono">创建您的第一个硬链任务开始使用</div>
           <v-btn class="btn-neon px-8" prepend-icon="mdi-plus" height="48" @click="handleCreate">
             立即创建
           </v-btn>
@@ -53,7 +54,7 @@
             sm="6"
             lg="4"
             v-for="(item, index) in taskStore.tasks"
-            :key="item.name"
+            :key="item.id || item.name"
           >
             <TaskItem
               :data="item"
@@ -61,6 +62,7 @@
               @edit="handleEdit"
               @delete="handleDelete"
               @play="handlePlay"
+              @stop="handleStop"
               @set-schedule="handleSetSchedule"
               @cancel-schedule="handleCancelSchedule"
               @show-config="handleShowConfig"
@@ -77,13 +79,15 @@
     <TaskLogViewer
       v-if="logVisible"
       v-model="logVisible"
+      :task-id="currentTaskId"
       :task-name="currentTaskName"
     />
 
     <RunDetail
       v-if="runVisible"
       v-model="runVisible"
-      :name="currentTaskName"
+      :task-id="currentTaskId"
+      :task-name="currentTaskName"
     />
 
     <TaskEditor
@@ -134,15 +138,17 @@ onMounted(() => {
 const { rmItem } = useDelete({ 
   onSuccess: () => {
     // 本地删除，不刷新整个列表
-    taskStore.removeTaskLocally(currentTaskName.value)
+    if (currentTaskId.value) {
+      taskStore.removeTaskLocally(currentTaskId.value)
+    }
   } 
 })
 const { addOrUpdateTask } = useAddOrEdit({ 
   onSuccess: async () => { 
     // 编辑后获取最新的任务数据并本地更新
-    if (currentTaskName.value) {
+    if (currentTaskId.value) {
       // 编辑模式：获取更新后的任务数据
-      await getItem(currentTaskName.value)
+      await getItem(currentTaskId.value)
       if (taskData.value) {
         taskStore.upsertTaskLocally(taskData.value)
       }
@@ -178,6 +184,7 @@ const editVisible = ref(false)
 const logVisible = ref(false)
 const runVisible = ref(false)
 const configEditorVisible = ref(false)
+const currentTaskId = ref<number | undefined>(undefined)
 const currentTaskName = ref('')
 const currentTaskData = ref<TTask | undefined>(undefined)
 const currentConfigData = ref<TConfig | undefined>(undefined)
@@ -191,6 +198,7 @@ const handleCreate = async () => {
   }
   
   if (configStore.configs?.length) {
+    currentTaskId.value = undefined
     currentTaskName.value = ''
     currentTaskData.value = undefined
     editVisible.value = true
@@ -199,18 +207,23 @@ const handleCreate = async () => {
   }
 }
 
-const handleEdit = async (name: string) => {
-  currentTaskName.value = name
-  await getItem(name)
-  console.log('[TaskList] 编辑任务:', name, '数据:', taskData.value)
+const handleEdit = async (task: TTask) => {
+  if (!task.id) {
+    messageStore.warning('未找到任务ID，无法编辑')
+    return
+  }
+  currentTaskId.value = task.id
+  currentTaskName.value = task.name
+  await getItem(task.id)
+  console.log('[TaskList] 编辑任务:', task.id, '数据:', taskData.value)
   currentTaskData.value = taskData.value
   editVisible.value = true
 }
 
 const handleTaskSubmit = async (task: TTask) => {
   try {
-    await addOrUpdateTask(task, currentTaskName.value || undefined)
-    messageStore.success(currentTaskName.value ? '任务更新成功' : '任务创建成功')
+    await addOrUpdateTask(task, currentTaskId.value || undefined)
+    messageStore.success(currentTaskId.value ? '任务更新成功' : '任务创建成功')
     taskEditorRef.value?.close()
   } catch (e) {
     console.error('[TaskList] 任务保存失败:', e)
@@ -219,17 +232,65 @@ const handleTaskSubmit = async (task: TTask) => {
   }
 }
 
-const handleDelete = async (name: string) => {
-  currentTaskName.value = name
-  await rmItem(name)
+const handleDelete = async (task: TTask) => {
+  if (!task.id) {
+    messageStore.warning('未找到任务ID，无法删除')
+    return
+  }
+  currentTaskId.value = task.id
+  currentTaskName.value = task.name
+  await rmItem(task.id)
 }
 
-const handlePlay = (name: string) => {
-  currentTaskName.value = name
-  runVisible.value = true
+const handlePlay = async (task: TTask) => {
+  if (!task.id) {
+    messageStore.warning('未找到任务ID，无法执行')
+    return
+  }
+  
+  // Mark as running
+  task.isRunning = true
+  messageStore.info(`⏳ 任务 "${task.name}" 开始执行...`)
+  
+  try {
+    const response = await fetch(`/api/task/run?taskId=${task.id}`)
+    const result = await response.json()
+    
+    if (result.success) {
+      // Task started - will run async
+      // Optionally poll for status or just let user check logs
+    } else {
+      messageStore.error(`❌ ${result.message || '启动失败'}`)
+      task.isRunning = false
+    }
+  } catch (e: any) {
+    messageStore.error(`❌ 执行失败: ${e.message || '网络错误'}`)
+    task.isRunning = false
+  }
 }
 
-const handleSetSchedule = (name: string) => {
+const handleStop = async (task: TTask) => {
+  if (!task.id) {
+    messageStore.warning('未找到任务ID')
+    return
+  }
+  
+  try {
+    const response = await fetch(`/api/task/run/stop?taskId=${task.id}`, { method: 'POST' })
+    const result = await response.json()
+    
+    if (result.success) {
+      messageStore.success(`⏹️ 任务 "${task.name}" 已停止`)
+      task.isRunning = false
+    } else {
+      messageStore.error(`❌ ${result.message || '停止失败'}`)
+    }
+  } catch (e: any) {
+    messageStore.error(`❌ 停止失败: ${e.message || '网络错误'}`)
+  }
+}
+
+const handleSetSchedule = (_task: TTask) => {
   // 定时任务功能已移除
   messageStore.info('定时任务功能已移除')
 }
@@ -238,12 +299,21 @@ const handleScheduleSubmit = async () => {
   // 定时任务功能已移除
 }
 
-const handleCancelSchedule = async (name: string) => {
-  await cancelSchedule(name)
+const handleCancelSchedule = async (task: TTask) => {
+  if (!task.id) {
+    messageStore.warning('未找到任务ID，无法取消定时')
+    return
+  }
+  await cancelSchedule(task.id)
 }
 
-const handleShowLog = (name: string) => {
-  currentTaskName.value = name
+const handleShowLog = (task: TTask) => {
+  if (!task.id) {
+    messageStore.warning('未找到任务ID，无法查看日志')
+    return
+  }
+  currentTaskId.value = task.id
+  currentTaskName.value = task.name
   logVisible.value = true
 }
 
@@ -288,24 +358,24 @@ const handleConfigSubmit = async (config: TConfig) => {
 .header-icon-box {
   width: 56px;
   height: 56px;
-  background: rgba(0, 240, 255, 0.1);
+  background: rgba(var(--color-primary-rgb), 0.1);
   border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
-  border: 1px solid rgba(0, 240, 255, 0.2);
+  box-shadow: 0 0 15px rgba(var(--color-primary-rgb), 0.1);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
 }
 
 .empty-state {
-  background: rgba(15, 23, 42, 0.6);
-  border-color: rgba(0, 240, 255, 0.1);
+  background: rgba(var(--color-surface-rgb), 0.3);
+  border-color: var(--color-border);
 }
 
 .empty-icon-container {
   width: 100px;
   height: 100px;
-  background: radial-gradient(circle, rgba(0, 240, 255, 0.1) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--color-primary-rgb), 0.1) 0%, transparent 70%);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -336,8 +406,14 @@ const handleConfigSubmit = async (config: TConfig) => {
 .font-mono {
     font-family: 'Space Mono', monospace;
 }
+.text-text {
+  color: var(--color-text) !important;
+}
+.text-text-muted {
+  color: var(--color-text-muted) !important;
+}
 .border-neon {
-    border-color: rgba(0, 240, 255, 0.2) !important;
+    border-color: var(--color-border) !important;
 }
 .border-b {
     border-bottom-width: 1px;

@@ -7,7 +7,7 @@
   >
     <div class="d-flex flex-column h-100">
       <div class="pa-4 border-b bg-grey-lighten-4 d-flex align-center justify-space-between">
-        <div class="text-h6 font-weight-bold">{{ name }} 定时任务设置</div>
+        <div class="text-h6 font-weight-bold">{{ taskName }} 定时任务设置</div>
         <v-btn icon="mdi-close" variant="text" density="compact" @click="isOpen = false"></v-btn>
       </div>
 
@@ -73,7 +73,8 @@ import type { TSchedule } from '../../types/shim'
 
 const props = defineProps<{
   modelValue: boolean
-  name: string
+  taskId: number
+  taskName?: string
 }>()
 
 const emit = defineEmits<{
@@ -104,7 +105,7 @@ const handleSubmit = async () => {
   const { valid: isValid } = await form.value.validate()
   if (isValid) {
     emit('submit', {
-      name: props.name,
+      taskId: props.taskId,
       scheduleType: formData.value.scheduleType,
       scheduleValue: formData.value.scheduleType === 'cron' 
         ? formData.value.cronValue 

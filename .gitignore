@@ -34,3 +34,5 @@ dist-ssr
 .ace-tool/
 acetest-*
 .env
+/.agent
+/llmdoc

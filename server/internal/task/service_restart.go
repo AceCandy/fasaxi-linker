@@ -4,24 +4,29 @@ import (
 	"fmt"
 )
 
-func (s *Service) RestartWatch(name string) error {
+func (s *Service) RestartWatch(taskID int) error {
 	// Check if watching
 	s.wMu.RLock()
-	_, ok := s.watchers[name]
+	_, ok := s.watchers[taskID]
 	s.wMu.RUnlock()
 
 	if !ok {
 		return nil
 	}
 
-	logger := GetLogger(name)
-	fmt.Printf("⚠️ 正在重启监听: %s (配置变更)\n", name)
+	task, ok := s.Get(taskID)
+	if !ok {
+		return fmt.Errorf("task %d not found", taskID)
+	}
+
+	logger := GetLogger(taskID)
+	fmt.Printf("⚠️ 正在重启监听: %s (配置变更)\n", task.Name)
 
 	// Stop
-	if err := s.StopWatch(name); err != nil {
+	if err := s.StopWatch(taskID); err != nil {
 		return err
 	}
 
 	// Start (will reload config)
-	return s.StartWatch(name, logger)
+	return s.StartWatch(taskID, logger)
 }

@@ -158,18 +158,6 @@ func createTables(ctx context.Context) error {
 	);
 	`
 
-	taskLogsTable := `
-	CREATE TABLE IF NOT EXISTS task_logs (
-		id SERIAL PRIMARY KEY,
-		task_id INTEGER NOT NULL,
-		level VARCHAR(20) NOT NULL,
-		message TEXT NOT NULL,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);
-	CREATE INDEX IF NOT EXISTS idx_task_logs_task_id ON task_logs(task_id);
-	CREATE INDEX IF NOT EXISTS idx_task_logs_created_at ON task_logs(created_at DESC);
-	`
-
 	if _, err := pool.Exec(ctx, tasksTable); err != nil {
 		return fmt.Errorf("failed to create tasks table: %w", err)
 	}
@@ -231,21 +219,7 @@ func createTables(ctx context.Context) error {
 		return fmt.Errorf("failed to add comments for cache_files table: %w", err)
 	}
 
-	if _, err := pool.Exec(ctx, taskLogsTable); err != nil {
-		return fmt.Errorf("failed to create task_logs table: %w", err)
-	}
-
-	taskLogsComments := `
-	COMMENT ON TABLE task_logs IS '任务日志表';
-	COMMENT ON COLUMN task_logs.id IS '主键';
-	COMMENT ON COLUMN task_logs.task_id IS '任务ID';
-	COMMENT ON COLUMN task_logs.level IS '日志级别';
-	COMMENT ON COLUMN task_logs.message IS '日志内容';
-	COMMENT ON COLUMN task_logs.created_at IS '创建时间';
-	`
-	if _, err := pool.Exec(ctx, taskLogsComments); err != nil {
-		return fmt.Errorf("failed to add comments for task_logs table: %w", err)
-	}
+	// Note: task_logs table has been removed - logs are now stored as files in ./logs/task_{id}/
 
 	fmt.Println("✅ Tables created/verified successfully")
 	return nil

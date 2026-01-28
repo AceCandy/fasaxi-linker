@@ -7,23 +7,24 @@ export default {
     theme: {
         extend: {
             colors: {
-                primary: '#00F0FF', // Cyan-Neon
-                secondary: '#4D4DFF', // Electric Blue
-                background: '#0F172A', // Slate 950
-                surface: '#1E293B', // Slate 800 (for lighter backgrounds)
-                text: '#E0F2F7', // Sky 100
-                accent: '#6D28D9', // Violet 700
-                success: '#10B981', // Green 500
-                warning: '#FBBF24', // Amber 400
-                error: '#EF4444', // Red 500
+                primary: 'rgb(var(--color-primary-rgb) / <alpha-value>)',
+                secondary: 'rgb(var(--color-secondary-rgb) / <alpha-value>)',
+                background: 'rgb(var(--color-background-rgb) / <alpha-value>)',
+                't-surface': 'rgb(var(--color-surface-rgb) / <alpha-value>)',
+                text: 'rgb(var(--color-text-rgb) / <alpha-value>)',
+                accent: 'rgb(var(--color-accent-rgb) / <alpha-value>)',
+                success: 'var(--color-success)',
+                warning: 'var(--color-warning)',
+                error: 'var(--color-error)',
+                border: 'rgb(var(--color-border-rgb) / <alpha-value>)',
             },
             fontFamily: {
                 sans: ['Space Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
                 display: ['Orbitron', 'sans-serif'],
             },
             boxShadow: {
-                'neon': '0 0 5px theme("colors.primary"), 0 0 20px theme("colors.primary")',
-                'neon-strong': '0 0 10px theme("colors.primary"), 0 0 40px theme("colors.primary")',
+                'neon': 'var(--shadow-neon)',
+                'neon-strong': 'var(--shadow-neon-strong)',
             }
         },
     },

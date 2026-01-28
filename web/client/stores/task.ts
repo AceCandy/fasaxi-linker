@@ -47,32 +47,32 @@ export const useTaskStore = defineStore('task', {
     },
     
     // 本地删除任务，不重新加载整个列表
-    removeTaskLocally(name: string) {
-      const index = this.tasks.findIndex(task => task.name === name)
+    removeTaskLocally(taskId: number) {
+      const index = this.tasks.findIndex(task => task.id === taskId)
       if (index !== -1) {
         this.tasks.splice(index, 1)
-        console.log('[TaskStore] 本地删除任务:', name, '剩余任务数:', this.tasks.length)
+        console.log('[TaskStore] 本地删除任务:', taskId, '剩余任务数:', this.tasks.length)
       }
     },
     
     // 本地更新任务状态，不重新加载整个列表
-    updateTaskLocally(name: string, updates: Partial<TTask>) {
-      const task = this.tasks.find(t => t.name === name)
+    updateTaskLocally(taskId: number, updates: Partial<TTask>) {
+      const task = this.tasks.find(t => t.id === taskId)
       if (task) {
         Object.assign(task, updates)
-        console.log('[TaskStore] 本地更新任务:', name, updates)
+        console.log('[TaskStore] 本地更新任务:', taskId, updates)
       }
     },
     
     // 本地添加或更新任务
     upsertTaskLocally(task: TTask) {
-      const index = this.tasks.findIndex(t => t.name === task.name)
+      const index = this.tasks.findIndex(t => t.id === task.id)
       if (index !== -1) {
         this.tasks[index] = task
-        console.log('[TaskStore] 本地更新任务:', task.name)
+        console.log('[TaskStore] 本地更新任务:', task.id)
       } else {
         this.tasks.push(task)
-        console.log('[TaskStore] 本地添加任务:', task.name)
+        console.log('[TaskStore] 本地添加任务:', task.id)
       }
     }
   }

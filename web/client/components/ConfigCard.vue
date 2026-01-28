@@ -1,7 +1,7 @@
 <template>
-  <v-card class="config-card mb-4 border border-slate-700 bg-slate-800/50" :class="{ 'editing': isDirty }">
+  <v-card class="config-card glass-card-interactive mb-4" :class="{ 'editing': isDirty }">
     <!-- 头部 -->
-    <div class="card-header pt-4 px-4 pb-2 d-flex align-center justify-space-between" style="border-bottom: 1px dashed rgba(51, 65, 85, 0.5);">
+    <div class="card-header pt-4 px-4 pb-2 d-flex align-center justify-space-between" style="border-bottom: 1px dashed var(--color-border);">
       <div class="d-flex align-center flex-grow-1 mr-2" style="min-width: 0;">
          <div class="header-icon-wrapper mr-3">
             <v-icon icon="mdi-cog" color="primary" size="18"></v-icon>
@@ -12,7 +12,7 @@
             variant="plain"
             density="compact"
             hide-details
-            class="title-input font-weight-bold ml-n1 text-slate-300 font-mono"
+            class="title-input font-weight-bold ml-n1 text-text-muted font-mono"
             placeholder="配置名称"
             @update:model-value="checkDirty"
           ></v-text-field>
@@ -180,32 +180,24 @@ const handleSave = async () => {
 
 <style scoped>
 .config-card {
-  background: rgba(30, 41, 59, 0.4);
-  backdrop-filter: blur(10px);
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
   border-radius: 12px !important;
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  color: #E0F2F7;
-}
-
-.config-card:hover {
-  transform: translateY(-4px);
-  background: rgba(30, 41, 59, 0.8);
-  box-shadow: 0 0 20px rgba(0, 240, 255, 0.1);
-  border-color: rgba(0, 240, 255, 0.3) !important;
+  box-shadow: var(--shadow-glass);
+  color: var(--color-text);
 }
 
 .config-card.editing {
-  background: rgba(30, 41, 59, 0.9);
-  border-color: #00F0FF !important;
-  box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+  background: var(--glass-bg-strong);
+  border-color: var(--color-primary) !important;
+  box-shadow: var(--shadow-neon);
 }
 
 .title-input :deep(input) {
   font-size: 15px;
   font-weight: 600;
-  color: #E0F2F7 !important;
+  color: var(--color-text) !important;
   letter-spacing: 0.01em;
   padding-top: 0;
   padding-bottom: 0;
@@ -219,18 +211,20 @@ const handleSave = async () => {
 .header-icon-wrapper {
   width: 32px;
   height: 32px;
-  background: rgba(0, 240, 255, 0.1);
+  background: rgba(var(--color-primary-rgb), 0.05);
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  box-shadow: 0 0 10px rgba(0, 240, 255, 0.05);
+  box-shadow: 0 0 10px rgba(var(--color-primary-rgb), 0.05);
+  border: 1px solid var(--color-border);
 }
 
-.config-card:hover .header-icon-wrapper {
-  background: rgba(0, 240, 255, 0.2);
-  box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+.glass-card-interactive:hover .header-icon-wrapper {
+  background: rgba(var(--color-primary-rgb), 0.15);
+  box-shadow: 0 0 15px rgba(var(--color-primary-rgb), 0.2);
+  border-color: rgba(var(--color-primary-rgb), 0.3);
 }
 
 .delete-btn {
@@ -241,6 +235,7 @@ const handleSave = async () => {
 .delete-btn:hover {
   color: #ef4444 !important;
   opacity: 1;
+  background: rgba(239, 68, 68, 0.1); /* Red tint on hover */
 }
 
 .flat-form :deep(.v-card) {

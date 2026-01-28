@@ -22,7 +22,7 @@
 
         <!-- Content -->
         <div 
-          class="text-body-2 text-slate-300 font-mono mb-2 dialog-content"
+          class="text-body-2 text-text-muted font-mono mb-2 dialog-content"
           v-html="content"
         ></div>
       </v-card-text>
@@ -87,12 +87,7 @@ const icon = computed(() => {
 
 <style scoped>
 .glass-content-card {
-  background: rgba(15, 23, 42, 0.95) !important;
-  backdrop-filter: blur(20px) !important;
-  border: 1px solid rgba(0, 240, 255, 0.3) !important;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.5) !important;
-  border-radius: 20px !important;
-  overflow: hidden;
+  /* Using global style */
 }
 
 .dialog-background-glow {
@@ -100,16 +95,16 @@ const icon = computed(() => {
   top: 0;
   left: 0;
   right: 0;
-  height: 120px;
-  background: radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.15) 0%, transparent 70%);
+  height: 140px;
+  background: radial-gradient(circle at 50% 0%, rgba(var(--color-primary-rgb), 0.1) 0%, transparent 80%);
   pointer-events: none;
 }
 
 /* Icon Styles */
 .icon-wrapper {
   position: relative;
-  width: 64px;
-  height: 64px;
+  width: 72px;
+  height: 72px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -119,46 +114,49 @@ const icon = computed(() => {
 .icon-bg {
   position: absolute;
   inset: 0;
-  border-radius: 20px;
+  border-radius: 24px;
   transform: rotate(45deg);
   transition: all 0.3s ease;
   opacity: 0.2;
   border: 1px solid currentColor;
-  box-shadow: 0 0 15px currentColor;
+  box-shadow: 0 0 20px currentColor;
 }
 
 .icon-bg--warning {
-  color: #fb923c;
-  background: rgba(251, 146, 60, 0.1);
+  color: var(--color-warning);
+  background: rgba(var(--color-warning), 0.15);
 }
 
 .icon-bg--error {
-  color: #f87171;
-  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-error);
+  background: rgba(var(--color-error), 0.15);
 }
 
 .icon-bg--info {
-  color: #00F0FF;
-  background: rgba(0, 240, 255, 0.1);
+  color: var(--color-secondary);
+  background: rgba(var(--color-secondary), 0.15);
 }
 
 .glow-icon {
-  filter: drop-shadow(0 0 8px currentColor);
+  filter: drop-shadow(0 0 10px currentColor);
 }
 
 /* Typography */
 .dialog-title {
   letter-spacing: 1px;
+  font-size: 1.25rem;
+  color: var(--color-text);
 }
 
 .dialog-content {
   line-height: 1.6;
   opacity: 0.9;
+  font-size: 0.95rem;
 }
 
 /* Buttons */
 .gap-3 {
-  gap: 12px;
+  gap: 16px;
 }
 
 .flex-1-0 {
@@ -166,27 +164,29 @@ const icon = computed(() => {
 }
 
 .btn-cancel {
-  background: rgba(255, 255, 255, 0.05) !important;
-  color: #94a3b8 !important; /* slate-400 */
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(var(--color-surface-rgb), 0.5) !important;
+  color: var(--color-text-muted) !important;
+  border: 1px solid var(--color-border);
   transition: all 0.2s ease;
 }
 
 .btn-cancel:hover {
-  background: rgba(255, 255, 255, 0.1) !important;
-  color: white !important;
+  background: rgba(var(--color-surface-rgb), 0.8) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-primary);
 }
 
 .btn-confirm {
-  color: #0f172a !important; /* Dark text for contrast on bright buttons */
+  color: #fff !important; /* Always white text for these gradient buttons */
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   font-weight: 800 !important;
+  border: none;
 }
 
 .btn-confirm:hover {
   transform: translateY(-2px);
-  filter: brightness(1.2);
-  box-shadow: 0 0 20px currentColor;
+  filter: brightness(1.1);
+  box-shadow: 0 0 25px currentColor;
 }
 
 .btn-confirm:active {
@@ -196,19 +196,19 @@ const icon = computed(() => {
 .btn-confirm--warning {
   background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%) !important;
   color: white !important;
-  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.4);
+  box-shadow: 0 4px 15px rgba(234, 88, 12, 0.4);
 }
 
 .btn-confirm--error {
   background: linear-gradient(135deg, #f87171 0%, #dc2626 100%) !important;
   color: white !important;
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
 }
 
 .btn-confirm--info {
-  background: linear-gradient(135deg, #00F0FF 0%, #00a0aa 100%) !important;
-  color: #0f172a !important;
-  box-shadow: 0 4px 12px rgba(0, 240, 255, 0.4);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%) !important;
+  color: white !important;
+  box-shadow: 0 4px 15px rgba(0, 240, 255, 0.4);
 }
 
 .font-display {
@@ -218,7 +218,7 @@ const icon = computed(() => {
     font-family: 'Space Mono', monospace;
 }
 .text-primary-glow {
-    color: #E0F2F7;
-    text-shadow: 0 0 10px rgba(224, 242, 247, 0.3);
+    color: var(--color-text);
+    text-shadow: 0 0 15px rgba(var(--color-primary-rgb), 0.2);
 }
 </style>

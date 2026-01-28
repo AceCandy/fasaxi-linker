@@ -1,9 +1,7 @@
 import { ref } from 'vue'
 import fetch from '../kit/fetch'
 import type { TConfig } from '../../types/shim'
-import type { TAllConfig } from '@hlink/core'
 
-type ConfigDetail = Omit<TAllConfig, 'withoutConfirm' | 'reverse'>
 
 // 全局状态，避免重复请求
 const globalConfigState = {
@@ -44,11 +42,11 @@ export function useList() {
         mutate()
     }
 
-    return { 
-        data: globalConfigState.data, 
-        error: globalConfigState.error, 
-        loading: globalConfigState.loading, 
-        mutate 
+    return {
+        data: globalConfigState.data,
+        error: globalConfigState.error,
+        loading: globalConfigState.loading,
+        mutate
     }
 }
 
@@ -66,7 +64,7 @@ export function useAddOrEdit(options?: { onSuccess?: (data: boolean) => void; on
 
             console.log('[useConfig] 请求方法:', currentConfigId ? 'PUT' : 'POST')
             console.log('[useConfig] 请求参数:', params)
-            
+
             const res = await method<boolean>(url, params as any)
             console.log('[useConfig] 服务器响应:', res)
             options?.onSuccess?.(res)

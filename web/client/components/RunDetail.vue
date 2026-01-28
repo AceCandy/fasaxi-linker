@@ -7,12 +7,12 @@
   >
     <v-card class="glass-content-card">
       <!-- 优化后的标题栏 -->
-      <div class="dialog-header">
+      <div class="glass-dialog-header">
         <div class="header-icon-box" :class="`bg-${statusIconColor}-lighten-5`">
           <v-icon :color="statusIconColor" size="24">{{ statusIcon }}</v-icon>
         </div>
         <div>
-          <div class="text-h6 font-weight-bold text-grey-darken-3">{{ name }}</div>
+          <div class="text-h6 font-weight-bold text-grey-darken-3">{{ taskName }}</div>
           <div class="text-caption" :class="`text-${statusIconColor}`" style="opacity: 0.9;">{{ statusText }}</div>
         </div>
         <v-spacer></v-spacer>
@@ -84,7 +84,8 @@ import type { TSendData, TTaskStatus, TTaskType } from '../../types/shim'
 
 const props = defineProps<{
   modelValue: boolean
-  name?: string
+  taskId?: number
+  taskName?: string
 }>()
 
 const emit = defineEmits<{
@@ -148,16 +149,17 @@ const showConfirm = computed(() => {
 const { check } = useCheckConfig()
 
 const startTask = () => {
-  if (!props.name) return
+  if (!props.taskId) return
   
   logs.value = []
   status.value = 'ongoing'
   
   // 直接开始执行任务，不检查配置
-  console.log('[RunDetail] 创建 EventSource 连接:', `/api/task/run?name=${encodeURIComponent(props.name!)}`)
+  const taskId = props.taskId
+  console.log('[RunDetail] 创建 EventSource 连接:', `/api/task/run?taskId=${encodeURIComponent(String(taskId))}`)
   
   if (window.EventSource) {
-    const es = new window.EventSource(`/api/task/run?name=${encodeURIComponent(props.name!)}`)
+    const es = new window.EventSource(`/api/task/run?taskId=${encodeURIComponent(String(taskId))}`)
     eventSource.value = es
     
     es.onmessage = (event) => {
@@ -211,17 +213,17 @@ const handleClose = () => {
 }
 
 const handleCancel = async () => {
-  if (!props.name) return
+  if (!props.taskId) return
   cancelLoading.value = true
   
   try {
     if (type.value === 'prune' && !loading.value) {
       // Cancel delete confirmation
-      await makeDeleteFile(props.name, true)
+      await makeDeleteFile(props.taskId, true)
       handleClose()
     } else {
       // Cancel ongoing task
-      await cancel(props.name)
+      await cancel(props.taskId)
     }
   } catch (e) {
     console.error(e)
@@ -231,10 +233,10 @@ const handleCancel = async () => {
 }
 
 const handleConfirm = async () => {
-  if (!props.name) return
+  if (!props.taskId) return
   confirmLoading.value = true
   try {
-    await makeDeleteFile(props.name)
+    await makeDeleteFile(props.taskId)
     handleClose()
   } catch (e) {
     console.error(e)
@@ -244,9 +246,9 @@ const handleConfirm = async () => {
 }
 
 watch(() => props.modelValue, (val) => {
-  console.log('[RunDetail] modelValue 变化:', val, 'name:', props.name)
-  if (val && props.name) {
-    console.log('[RunDetail] 开始执行任务:', props.name)
+  console.log('[RunDetail] modelValue 变化:', val, 'taskId:', props.taskId)
+  if (val && props.taskId) {
+    console.log('[RunDetail] 开始执行任务:', props.taskName)
     startTask()
   } else {
     if (eventSource.value) {
@@ -256,11 +258,11 @@ watch(() => props.modelValue, (val) => {
   }
 }, { immediate: true })
 
-// 也监听 props.name 的变化
-watch(() => props.name, (newName) => {
-  console.log('[RunDetail] name 变化:', newName, 'modelValue:', props.modelValue)
-  if (props.modelValue && newName) {
-    console.log('[RunDetail] name 变化后开始执行任务:', newName)
+// 也监听 props.taskId 的变化
+watch(() => props.taskId, (newTaskId) => {
+  console.log('[RunDetail] taskId 变化:', newTaskId, 'modelValue:', props.modelValue)
+  if (props.modelValue && newTaskId) {
+    console.log('[RunDetail] taskId 变化后开始执行任务:', props.taskName)
     startTask()
   }
 })
@@ -273,38 +275,36 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.glass-content-card {
-  background: rgba(255, 255, 255, 0.98) !important;
-  backdrop-filter: blur(20px) !important;
-  border-radius: 20px !important;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.1) !important;
-  overflow: hidden;
-  border: 1px solid rgba(0,0,0,0.05);
-}
-
-.dialog-header {
-  display: flex;
-  align-items: center;
-  padding: 16px 24px;
-  gap: 12px;
-  background: white;
-}
-
 .header-icon-box {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(var(--color-primary-rgb), 0.1);
+  box-shadow: 0 0 15px rgba(var(--color-primary-rgb), 0.1);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
 }
 
-.bg-success-lighten-5 { background-color: #f0fdf4; }
-.bg-error-lighten-5 { background-color: #fef2f2; }
-.bg-info-lighten-5 { background-color: #eff6ff; }
+.bg-success-lighten-5 { background-color: rgba(16, 185, 129, 0.1) !important; border-color: rgba(16, 185, 129, 0.3) !important; box-shadow: 0 0 10px rgba(16, 185, 129, 0.2) !important; }
+.bg-error-lighten-5 { background-color: rgba(239, 68, 68, 0.1) !important; border-color: rgba(239, 68, 68, 0.3) !important; box-shadow: 0 0 10px rgba(239, 68, 68, 0.2) !important; }
+.bg-info-lighten-5 { background-color: rgba(0, 240, 255, 0.1) !important; border-color: rgba(0, 240, 255, 0.3) !important; }
 
 .action-btn {
   font-weight: 600;
   letter-spacing: 0.5px;
+  font-family: 'Space Mono', monospace;
+}
+
+:deep(.v-card-actions) {
+  background: rgba(var(--color-surface-rgb), 0.8) !important;
+  border-top: 1px solid var(--color-border);
+}
+
+.text-grey-darken-3 {
+  color: var(--color-text) !important;
+  font-family: 'Orbitron', sans-serif;
+  letter-spacing: 1px;
 }
 </style>

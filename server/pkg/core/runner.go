@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 )
 
-// Run executes the main linking task
+// Run executes the main linking task with concurrent processing
 func Run(opts Options, logger func(string, string)) (Stats, error) {
+	fmt.Println("DEBUG: Run() started")
+
 	stats := Stats{
 		FailFiles: make(map[string][]string),
 	}
@@ -18,143 +21,173 @@ func Run(opts Options, logger func(string, string)) (Stats, error) {
 	var cache *Cache
 	if opts.OpenCache {
 		cache = NewCache()
-		cache.SetTaskName(opts.Name) // Set task name for cache isolation
-		if logger != nil {
-			logger("INFO", fmt.Sprintf("Cache enabled for task: %s", opts.Name))
-		}
+		cache.SetTaskID(opts.TaskID)
+		fmt.Printf("DEBUG: Cache ENABLED for task %s (ID=%d)\n", opts.Name, opts.TaskID)
 	} else {
-		if logger != nil {
-			logger("INFO", "Cache disabled")
-		}
+		fmt.Printf("DEBUG: Cache DISABLED for task %s (ID=%d)\n", opts.Name, opts.TaskID)
 	}
 
 	var newCachedFiles []string
 	var mu sync.Mutex
 
+	// Collect all files first
+	fmt.Println("DEBUG: Starting file collection...")
+	var allFiles []fileJob
+	fileCount := 0
+
 	for src, dests := range opts.PathsMapping {
+		fmt.Printf("DEBUG: Walking source: %s\n", src)
 		err := filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
-				// Record error but continue
-				mu.Lock()
-				stats.FailFiles["Access Error"] = append(stats.FailFiles["Access Error"], path)
-				stats.FailCount++
-				mu.Unlock()
-				return nil
+				return nil // Skip errors
 			}
 
 			if info.IsDir() {
-				// Should we skip excluded directories to save time?
-				// Simple doublestar match on dir path?
-				// For now, continue walking.
 				return nil
+			}
+
+			fileCount++
+			if fileCount%1000 == 0 {
+				fmt.Printf("DEBUG: Scanned %d files...\n", fileCount)
 			}
 
 			// Check Supported
 			if !Supported(path, opts.Include, opts.Exclude) {
-				if logger != nil {
-					logger("DEBUG", fmt.Sprintf("File not supported by filters: %s", path))
-				}
 				return nil
 			}
 
-			// Check Cache
+			// Check Cache (skip for now to speed up)
 			if opts.OpenCache && cache != nil {
-				has, _ := cache.Has(path, true) // Ignore case for safety
+				has, _ := cache.Has(path, true)
 				if has {
 					if logger != nil {
-						logger("INFO", fmt.Sprintf("Skip cached file: %s", path))
+						logger("WARN", fmt.Sprintf("⚠️ 跳过(已缓存): %s", path))
 					}
 					return nil
 				}
 			}
 
-			// Process Link
-			// Handle multiple destinations
-			var linkSuccess bool
-			var anySuccess bool
-			
-			for _, dest := range dests {
-				targetDir, err := GetOriginalDestPath(path, src, dest, opts.KeepDirStruct, opts.MkdirIfSingle)
-				if err != nil {
-					mu.Lock()
-					stats.FailFiles["Path Calc Error"] = append(stats.FailFiles["Path Calc Error"], path)
-					stats.FailCount++
-					mu.Unlock()
-					continue
-				}
-
-				targetFile, err := Link(path, targetDir)
-				if err != nil {
-					// Check if it's "file exists"
-					if strings.Contains(err.Error(), "file exists") {
-						if logger != nil {
-							logger("INFO", fmt.Sprintf("File already exists, skipping: %s", targetFile))
-						}
-						linkSuccess = true // File exists, consider as processed
-					} else {
-						mu.Lock()
-						stats.FailFiles[err.Error()] = append(stats.FailFiles[err.Error()], path+" -> "+targetDir)
-						stats.FailCount++
-						mu.Unlock()
-						if logger != nil {
-							logger("ERROR", fmt.Sprintf("Failed: %s -> %s (%v)", path, targetDir, err))
-						}
-						continue
-					}
-				} else {
-					// Success
-					// fmt.Printf("Linked: %s -> %s\n", path, targetFile)
-					if logger != nil {
-						logger("SUCCEED", fmt.Sprintf("Linked: %s -> %s", path, targetFile))
-					}
-					linkSuccess = true
-					anySuccess = true
-					if logger != nil {
-						logger("DEBUG", fmt.Sprintf("Set linkSuccess=true for %s", path))
-					}
-				}
-			}
-
-			
-
-			mu.Lock()
-			if anySuccess || linkSuccess {
-				stats.SuccessCount++
-				// Add to cache if processing was successful
-				if opts.OpenCache {
-					newCachedFiles = append(newCachedFiles, path)
-					if logger != nil {
-						logger("DEBUG", fmt.Sprintf("Added to cache: %s (total: %d)", path, len(newCachedFiles)))
-					}
-				}
-			} else {
-				if logger != nil {
-					logger("DEBUG", fmt.Sprintf("Not adding to cache: %s (anySuccess=%v, linkSuccess=%v)", path, anySuccess, linkSuccess))
-				}
-			}
-			mu.Unlock()
+			allFiles = append(allFiles, fileJob{
+				path:  path,
+				src:   src,
+				dests: dests,
+			})
 
 			return nil
 		})
 
 		if err != nil {
+			fmt.Printf("DEBUG: Walk error: %v\n", err)
 			return stats, err
 		}
 	}
 
-	// Update Cache
-	if opts.OpenCache && cache != nil {
-		if len(newCachedFiles) > 0 {
-			if logger != nil {
-				logger("INFO", fmt.Sprintf("Adding %d files to cache", len(newCachedFiles)))
+	fmt.Printf("DEBUG: Collected %d files to process\n", len(allFiles))
+
+	if len(allFiles) == 0 {
+		fmt.Println("DEBUG: No files to process")
+		return stats, nil
+	}
+
+	// Process files concurrently
+	numWorkers := runtime.NumCPU() * 2
+	if numWorkers > 16 {
+		numWorkers = 16
+	}
+	if len(allFiles) < numWorkers {
+		numWorkers = len(allFiles)
+	}
+
+	fmt.Printf("DEBUG: Starting %d workers for %d files\n", numWorkers, len(allFiles))
+
+	jobs := make(chan fileJob, len(allFiles))
+	var wg sync.WaitGroup
+
+	// Start workers
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+			for job := range jobs {
+				processFile(job, opts, cache, logger, &stats, &newCachedFiles, &mu)
 			}
-			_ = cache.Add(newCachedFiles)
+		}(i)
+	}
+
+	// Send jobs
+	for _, job := range allFiles {
+		jobs <- job
+	}
+	close(jobs)
+
+	fmt.Println("DEBUG: Waiting for workers to complete...")
+	wg.Wait()
+	fmt.Println("DEBUG: All workers completed")
+
+	// Update Cache
+	if opts.OpenCache && cache != nil && len(newCachedFiles) > 0 {
+		if logger != nil {
+			logger("INFO", fmt.Sprintf("💾 已加入缓存: %d 个文件", len(newCachedFiles)))
+		}
+		_ = cache.Add(newCachedFiles)
+	}
+
+	fmt.Printf("DEBUG: Run() completed. Success: %d, Fail: %d\n", stats.SuccessCount, stats.FailCount)
+	return stats, nil
+}
+
+type fileJob struct {
+	path  string
+	src   string
+	dests []string
+}
+
+func processFile(job fileJob, opts Options, cache *Cache, logger func(string, string), stats *Stats, newCachedFiles *[]string, mu *sync.Mutex) {
+	var linkSuccess bool
+	var anySuccess bool
+
+	for _, dest := range job.dests {
+		targetDir, err := GetOriginalDestPath(job.path, job.src, dest, opts.KeepDirStruct, opts.MkdirIfSingle)
+		if err != nil {
+			mu.Lock()
+			stats.FailFiles["Path Calc Error"] = append(stats.FailFiles["Path Calc Error"], job.path)
+			stats.FailCount++
+			mu.Unlock()
+			continue
+		}
+
+		targetFile, err := Link(job.path, targetDir)
+		if err != nil {
+			if strings.Contains(err.Error(), "file exists") {
+				if logger != nil {
+					logger("WARN", fmt.Sprintf("⚠️ 文件已存在: %s → %s", job.path, targetFile))
+				}
+				linkSuccess = true
+			} else {
+				mu.Lock()
+				stats.FailFiles[err.Error()] = append(stats.FailFiles[err.Error()], job.path+" -> "+targetDir)
+				stats.FailCount++
+				mu.Unlock()
+				if logger != nil {
+					logger("ERROR", fmt.Sprintf("❌ 硬链失败: %s → %s (%v)", job.path, targetDir, err))
+				}
+				continue
+			}
 		} else {
 			if logger != nil {
-				logger("INFO", "No new files to add to cache")
+				logger("SUCCEED", fmt.Sprintf("✅ 硬链成功: %s → %s", job.path, targetFile))
 			}
+			linkSuccess = true
+			anySuccess = true
 		}
 	}
 
-	return stats, nil
+	mu.Lock()
+	if anySuccess || linkSuccess {
+		stats.SuccessCount++
+		if opts.OpenCache {
+			*newCachedFiles = append(*newCachedFiles, job.path)
+		}
+	}
+	mu.Unlock()
 }

@@ -11,6 +11,21 @@
       </div>
       
       <v-spacer></v-spacer>
+    
+      <!-- 中间：主题切换 -->
+      <div class="theme-switcher">
+        <v-btn
+          variant="text"
+          icon
+          class="nav-btn theme-btn"
+          @click="themeStore.toggleTheme"
+        >
+          <v-icon :icon="themeStore.currentTheme === 'dark' ? 'mdi-weather-night' : 'mdi-weather-sunny'" size="20"></v-icon>
+          <v-tooltip activator="parent" location="bottom">切换主题</v-tooltip>
+        </v-btn>
+      </div>
+
+      <v-spacer></v-spacer>
 
       <div class="nav-items text-slate-300">
         <v-btn 
@@ -60,8 +75,10 @@
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
+import { useThemeStore } from '../stores/theme'
 
 const $route = useRoute()
+const themeStore = useThemeStore()
 </script>
 
 <style scoped>
@@ -122,7 +139,7 @@ const $route = useRoute()
 }
 
 .nav-btn {
-  color: rgba(224, 242, 247, 0.6) !important; /* Sky 100 with opacity */
+  color: var(--color-text-muted) !important;
   font-family: 'Space Mono', monospace;
   font-weight: 600;
   height: 36px !important;
@@ -132,28 +149,26 @@ const $route = useRoute()
 }
 
 .nav-btn:hover {
-  background: rgba(0, 240, 255, 0.05) !important;
-  color: #00F0FF !important;
-  text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+  background: rgba(var(--color-primary-rgb), 0.05) !important;
+  color: var(--color-primary) !important;
 }
 
 .nav-btn-active {
-  background: rgba(0, 240, 255, 0.1) !important;
-  color: #00F0FF !important;
-  border: 1px solid rgba(0, 240, 255, 0.3) !important;
-  box-shadow: 0 0 10px rgba(0, 240, 255, 0.1);
-  text-shadow: 0 0 5px rgba(0, 240, 255, 0.5);
+  background: rgba(var(--color-primary-rgb), 0.1) !important;
+  color: var(--color-primary) !important;
+  border: 1px solid rgba(var(--color-primary-rgb), 0.3) !important;
+  box-shadow: 0 0 10px rgba(var(--color-primary-rgb), 0.1);
 }
 
 /* Menu Items */
 .menu-item-hover {
-  color: #E0F2F7 !important;
+  color: var(--color-text-muted) !important;
   transition: all 0.2s ease;
 }
 
 .menu-item-hover:hover {
-  background: rgba(0, 240, 255, 0.1) !important;
-  color: #00F0FF !important;
+  background: rgba(var(--color-primary-rgb), 0.1) !important;
+  color: var(--color-primary) !important;
 }
 
 .main-content {

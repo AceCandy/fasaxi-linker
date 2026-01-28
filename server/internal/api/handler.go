@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -12,7 +11,6 @@ import (
 	"github.com/fasaxi-linker/servergo/internal/config"
 	"github.com/fasaxi-linker/servergo/internal/logs"
 	"github.com/fasaxi-linker/servergo/internal/task"
-	"github.com/fasaxi-linker/servergo/pkg/core"
 	"github.com/gin-gonic/gin"
 )
 
@@ -221,13 +219,13 @@ func (h *Handler) UpdateConfig(c *gin.Context) {
 	tasks := h.Service.GetAll()
 	for _, t := range tasks {
 		if t.ConfigID == body.ID || (t.ConfigID == 0 && t.Config == existingConfig.Name) {
-			if h.Service.IsWatching(t.Name) {
-				go func(taskName string) {
-					task.GetLogger(taskName)("WARN", fmt.Sprintf("⚠️ 正在重启监听: %s (配置-%d变更)\n", taskName, body.ID))
-					if err := h.Service.RestartWatch(taskName); err != nil {
+			if h.Service.IsWatching(t.ID) {
+				go func(taskID int, taskName string) {
+					task.GetLogger(taskID)("WARN", fmt.Sprintf("⚠️ 正在重启监听: %s (配置-%d变更)\n", taskName, body.ID))
+					if err := h.Service.RestartWatch(taskID); err != nil {
 						fmt.Printf("Failed to restart task %s: %v\n", taskName, err)
 					}
-				}(t.Name)
+				}(t.ID, t.Name)
 			}
 		}
 	}
@@ -309,7 +307,7 @@ func (h *Handler) GetTaskList(c *gin.Context) {
 	for i, t := range tasks {
 		result[i] = TaskWithStatus{
 			Task:       t,
-			IsWatching: h.Service.IsWatching(t.Name),
+			IsWatching: h.Service.IsWatching(t.ID),
 		}
 	}
 
@@ -317,13 +315,20 @@ func (h *Handler) GetTaskList(c *gin.Context) {
 }
 
 func (h *Handler) GetTask(c *gin.Context) {
-	name := c.Query("name")
-	t, ok := h.Service.Get(name)
+	taskIDStr := c.Query("taskId")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil || taskID <= 0 {
+		ErrorMsg(c, "taskId parameter is required")
+		return
+	}
+
+	t, ok := h.Service.Get(taskID)
 	if !ok {
 		ErrorMsg(c, "Task not found")
 		return
 	}
 	Success(c, gin.H{ // Frontend expects mixed object
+		"id":            t.ID,
 		"name":          t.Name,
 		"type":          t.Type,
 		"pathsMapping":  t.PathsMapping,
@@ -339,7 +344,7 @@ func (h *Handler) GetTask(c *gin.Context) {
 		"reverse":       t.Reverse,
 		"config":        t.Config,   // config name (display)
 		"configId":      t.ConfigID, // association id
-		"isWatching":    h.Service.IsWatching(name),
+		"isWatching":    h.Service.IsWatching(taskID),
 	})
 }
 
@@ -392,11 +397,16 @@ func (h *Handler) CreateTask(c *gin.Context) {
 
 func (h *Handler) UpdateTask(c *gin.Context) {
 	var body struct {
-		PreName string `json:"preName"`
+		TaskID int `json:"taskId"`
 		task.Task
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		Error(c, err)
+		return
+	}
+
+	if body.TaskID <= 0 {
+		ErrorMsg(c, "taskId is required")
 		return
 	}
 
@@ -434,14 +444,15 @@ func (h *Handler) UpdateTask(c *gin.Context) {
 	}
 
 	// Check if task exists to prevent error later, and also for dirty check
-	existingTask, ok := h.Service.Get(body.PreName)
+	existingTask, ok := h.Service.Get(body.TaskID)
 	if !ok {
 		ErrorMsg(c, "Task not found")
 		return
 	}
 
 	// Dirty check: If nothing changed, return success immediately
-	if body.PreName == body.Task.Name {
+	body.Task.ID = existingTask.ID
+	if existingTask.Name == body.Task.Name {
 		// Normalize slices for comparison (nil vs empty)
 		t1 := existingTask
 		t2 := body.Task
@@ -472,17 +483,17 @@ func (h *Handler) UpdateTask(c *gin.Context) {
 	}
 
 	// Check if task is currently watching before update
-	wasWatching := h.Service.IsWatching(body.PreName)
+	wasWatching := h.Service.IsWatching(body.TaskID)
 	if wasWatching {
 		// Stop the old watcher (especially important if name changes)
 		// We use a temporary log to indicate restart
-		task.GetLogger(body.PreName)("WARN", fmt.Sprintf("⚠️ 正在重启监听:%s (任务变更)\n", body.PreName))
-		if err := h.Service.StopWatch(body.PreName); err != nil {
+		task.GetLogger(body.TaskID)("WARN", fmt.Sprintf("⚠️ 正在重启监听:%s (任务变更)\n", existingTask.Name))
+		if err := h.Service.StopWatch(body.TaskID); err != nil {
 			fmt.Printf("Warning: Failed to stop watcher for update: %v\n", err)
 		}
 	}
 
-	if err := h.Service.Update(body.PreName, body.Task); err != nil {
+	if err := h.Service.Update(body.TaskID, body.Task); err != nil {
 		Error(c, err)
 		return
 	}
@@ -490,123 +501,113 @@ func (h *Handler) UpdateTask(c *gin.Context) {
 	// Restart watcher if it was running
 	if wasWatching {
 		// Start watcher with new name (in case it changed)
-		go func(name string) {
-			logger := task.GetLogger(name)
+		go func(taskID int) {
+			logger := task.GetLogger(taskID)
 			// Small delay to ensure DB save completes? Usually not needed with locks.
-			if err := h.Service.StartWatch(name, logger); err != nil {
+			if err := h.Service.StartWatch(taskID, logger); err != nil {
 				errMsg := fmt.Sprintf("任务更新后重启监听失败: %v", err)
 				logger("ERROR", errMsg)
 				fmt.Println(errMsg)
 			}
-		}(body.Task.Name)
+		}(body.TaskID)
 	}
 	Success(c, true)
 }
 
 func (h *Handler) DeleteTask(c *gin.Context) {
-	name := c.Query("name")
-	if err := h.Service.Delete(name); err != nil {
+	taskIDStr := c.Query("taskId")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil || taskID <= 0 {
+		ErrorMsg(c, "taskId parameter is required")
+		return
+	}
+
+	if err := h.Service.Delete(taskID); err != nil {
 		Error(c, err)
 		return
 	}
 	Success(c, true)
 }
 
-// === Run (SSE) ===
+// === Run (Async) ===
 
 func (h *Handler) RunTask(c *gin.Context) {
-	name := c.Query("name")
-	// alive := c.Query("alive") // '0' or '1'
-
-	opts, err := h.Service.GetOptions(name)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+	taskIDStr := c.Query("taskId")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil || taskID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "taskId parameter is required"})
 		return
 	}
 
-	c.Writer.Header().Set("Content-Type", "text/event-stream")
-	c.Writer.Header().Set("Cache-Control", "no-cache")
-	c.Writer.Header().Set("Connection", "keep-alive")
-	c.Writer.Header().Set("Transfer-Encoding", "chunked")
+	opts, err := h.Service.GetOptions(taskID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "message": "Task not found"})
+		return
+	}
 
-	// Logger callback that sends SSE events
-	logChan := make(chan gin.H)
+	// Check if already running
+	if task.IsRunning(taskID) {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "任务正在执行中", "running": true})
+		return
+	}
 
-	go func() {
-		defer close(logChan)
+	// Start async execution
+	if err := task.StartRun(taskID, opts); err != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		return
+	}
 
-		if opts.Type == "prune" {
-			// Prune logic
-			files, err := core.GetPruneFiles(opts)
-			if err != nil {
-				logChan <- gin.H{"status": "failed", "type": "prune", "output": fmt.Sprintf("Error: %v", err)}
-				return
-			}
-			if len(files) == 0 {
-				logChan <- gin.H{"status": "succeed", "type": "prune", "output": "没有找到需要修剪的硬链"}
-			} else {
-				// Prune requires confirmation usually. Frontend expects list of files?
-				// TaskSDK.run logic for prune:
-				// It waits for confirmation if files found.
-				// My core implementation doesn't support interactive confirmation yet via Runner.
-				// But let's simulate:
-				// Send "confirm" status?
-				// TaskSDK: output: '...WARN...confirm...'
-				logChan <- gin.H{"status": "ongoing", "type": "prune", "output": fmt.Sprintf("Wait implement prune confirm.")}
-			}
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "任务已开始执行", "running": true})
+}
 
-		} else {
-			// Main logic
-			// Get file logger
-			fileLogger := task.GetLogger(name)
+func (h *Handler) StopRun(c *gin.Context) {
+	taskIDStr := c.Query("taskId")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil || taskID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "taskId parameter is required"})
+		return
+	}
 
-			_, err := core.Run(opts, func(level, msg string) {
-				// 1. Emit to SSE
-				logChan <- gin.H{
-					"status": "ongoing",
-					"type":   "main",
-					"output": fmt.Sprintf("[%s] %s", level, msg),
-				}
+	if err := task.StopRun(taskID); err != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		return
+	}
 
-				// 2. Write to log file
-				fileLogger(level, msg)
-			})
-			if err != nil {
-				errMsg := err.Error()
-				logChan <- gin.H{"status": "failed", "type": "main", "output": errMsg}
-				fileLogger("ERROR", errMsg)
-			} else {
-				logChan <- gin.H{"status": "succeed", "type": "main", "output": "Done"}
-				fileLogger("SUCCEED", "Task Completed")
-			}
-		}
-	}()
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "任务已停止"})
+}
 
-	c.Stream(func(w io.Writer) bool {
-		msg, ok := <-logChan
-		if !ok {
-			return false
-		}
-		c.SSEvent("message", msg)
-		return true
-	})
+func (h *Handler) GetRunStatus(c *gin.Context) {
+	taskIDStr := c.Query("taskId")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil || taskID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "taskId parameter is required"})
+		return
+	}
+
+	running := task.IsRunning(taskID)
+	c.JSON(http.StatusOK, gin.H{"running": running})
 }
 
 // === Watch ===
 
 func (h *Handler) StartWatch(c *gin.Context) {
 	var body struct {
-		Name string `json:"name"`
+		TaskID int `json:"taskId"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		Error(c, err)
 		return
 	}
 
-	logger := task.GetLogger(body.Name)
+	if body.TaskID <= 0 {
+		ErrorMsg(c, "taskId is required")
+		return
+	}
+
+	logger := task.GetLogger(body.TaskID)
 
 	// Start watcher with latest configs (resolved inside service)
-	if err := h.Service.StartWatch(body.Name, logger); err != nil {
+	if err := h.Service.StartWatch(body.TaskID, logger); err != nil {
 		Error(c, err)
 		return
 	}
@@ -615,35 +616,75 @@ func (h *Handler) StartWatch(c *gin.Context) {
 
 func (h *Handler) StopWatch(c *gin.Context) {
 	var body struct {
-		Name string `json:"name"`
+		TaskID int `json:"taskId"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		Error(c, err)
 		return
 	}
 
-	if err := h.Service.StopWatch(body.Name); err != nil {
+	if body.TaskID <= 0 {
+		ErrorMsg(c, "taskId is required")
+		return
+	}
+
+	if err := h.Service.StopWatch(body.TaskID); err != nil {
 		Error(c, err)
 		return
 	}
 
 	// Add log entry for stop in a goroutine to avoid blocking
-	go func() {
-		task.GetLogger(body.Name)("WARN", fmt.Sprintf("⛔ [%s] 监听服务已停止", body.Name))
-	}()
+	taskName := fmt.Sprintf("%d", body.TaskID)
+	if t, ok := h.Service.Get(body.TaskID); ok {
+		taskName = t.Name
+	}
+	go func(taskID int, name string) {
+		task.GetLogger(taskID)("WARN", fmt.Sprintf("⛔ [%s] 监听服务已停止", name))
+	}(body.TaskID, taskName)
 
 	Success(c, true)
 }
 
 func (h *Handler) GetWatchStatus(c *gin.Context) {
-	name := c.Query("name")
-	Success(c, h.Service.IsWatching(name))
+	taskIDStr := c.Query("taskId")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil || taskID <= 0 {
+		ErrorMsg(c, "taskId parameter is required")
+		return
+	}
+	Success(c, h.Service.IsWatching(taskID))
+}
+
+func (h *Handler) GetLogFiles(c *gin.Context) {
+	taskIDStr := c.Query("taskId")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil || taskID <= 0 {
+		ErrorMsg(c, "taskId parameter is required")
+		return
+	}
+
+	files, err := task.GetLogFiles(taskID)
+	if err != nil {
+		ErrorMsg(c, fmt.Sprintf("读取日志文件列表失败: %v", err))
+		return
+	}
+
+	Success(c, files)
 }
 
 func (h *Handler) GetTaskLog(c *gin.Context) {
-	name := c.Query("name")
+	taskIDStr := c.Query("taskId")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil || taskID <= 0 {
+		ErrorMsg(c, "taskId parameter is required")
+		return
+	}
+
+	filename := c.Query("file")
 	pageStr := c.DefaultQuery("page", "1")
 	pageSizeStr := c.DefaultQuery("pageSize", "200")
+	levelFilter := c.Query("level")
+	search := c.Query("search")
 
 	page, _ := strconv.Atoi(pageStr)
 	pageSize, _ := strconv.Atoi(pageSizeStr)
@@ -658,38 +699,54 @@ func (h *Handler) GetTaskLog(c *gin.Context) {
 		pageSize = 1000 // Limit max page size
 	}
 
-	offset := (page - 1) * pageSize
-
 	// Return structured log entries
-	logEntries := task.GetLogEntries(name, offset, pageSize)
+	logEntries, total, err := task.GetLogEntries(taskID, filename, page, pageSize, levelFilter, search)
+	if err != nil {
+		ErrorMsg(c, fmt.Sprintf("读取日志失败: %v", err))
+		return
+	}
+
 	if logEntries == nil {
 		logEntries = []logs.LogEntry{} // Return empty array instead of null
 	}
-	Success(c, logEntries)
+
+	Success(c, gin.H{
+		"list":  logEntries,
+		"total": total,
+		"file":  filename,
+	})
 }
 
 func (h *Handler) ClearTaskLog(c *gin.Context) {
-	name := c.Query("name")
-	_ = task.ClearLog(name)
+	taskIDStr := c.Query("taskId")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil || taskID <= 0 {
+		ErrorMsg(c, "taskId parameter is required")
+		return
+	}
+	filename := c.Query("file")
+
+	if err := task.ClearLog(taskID, filename); err != nil {
+		ErrorMsg(c, fmt.Sprintf("清空日志失败: %v", err))
+		return
+	}
 	Success(c, true)
 }
 
 // === Cache ===
 
 func (h *Handler) GetCache(c *gin.Context) {
-	taskName := c.Query("taskName")
-	if taskName == "" {
-		ErrorMsg(c, "taskName parameter is required")
+	taskIDStr := c.Query("taskId")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil || taskID <= 0 {
+		ErrorMsg(c, "taskId parameter is required")
 		return
 	}
 
 	cacheStore := &cache.Store{}
 
-	// Resolve task name to ID
-	taskStore := task.GetSharedStore()
-	taskID, err := taskStore.GetTaskIDByName(taskName)
-	if err != nil {
-		ErrorMsg(c, fmt.Sprintf("任务不存在: %v", err))
+	if _, ok := h.Service.Get(taskID); !ok {
+		ErrorMsg(c, "任务不存在")
 		return
 	}
 
@@ -730,21 +787,21 @@ func (h *Handler) UpdateCache(c *gin.Context) {
 }
 
 func (h *Handler) DeleteCache(c *gin.Context) {
-	var body struct {
-		TaskName string   `json:"taskName"`
-		Files    []string `json:"files"`
-	}
-	if err := c.BindJSON(&body); err != nil {
-		ErrorMsg(c, "Invalid request body")
+	taskIDStr := c.Query("taskId")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil || taskID <= 0 {
+		ErrorMsg(c, "taskId parameter is required")
 		return
 	}
 
-	if body.TaskName == "" {
-		ErrorMsg(c, "taskName is required")
+	// Get files from query string (supports multiple values: ?files=a&files=b)
+	files := c.QueryArray("files")
+	if len(files) == 0 {
+		ErrorMsg(c, "files parameter is required")
 		return
 	}
 
-	if err := h.Service.RemoveCache(body.TaskName, body.Files); err != nil {
+	if err := h.Service.RemoveCache(taskID, files); err != nil {
 		ErrorMsg(c, fmt.Sprintf("删除缓存失败: %v", err))
 		return
 	}
@@ -753,25 +810,26 @@ func (h *Handler) DeleteCache(c *gin.Context) {
 }
 
 func (h *Handler) GetCacheLog(c *gin.Context) {
-	// Cache log is now stored in task_logs table
+	// Deprecated: Cache logs are now part of task logs (file-based)
 	// Return empty for backward compatibility
 	Success(c, "")
 }
 
 func (h *Handler) ClearCacheLog(c *gin.Context) {
-	// Cache log is now stored in task_logs table
+	// Deprecated: Cache logs are now part of task logs (file-based)
 	// Return success for backward compatibility
 	Success(c, true)
 }
 
 func (h *Handler) ClearTaskCache(c *gin.Context) {
-	taskName := c.Query("taskName")
-	if taskName == "" {
-		ErrorMsg(c, "taskName parameter is required")
+	taskIDStr := c.Query("taskId")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil || taskID <= 0 {
+		ErrorMsg(c, "taskId parameter is required")
 		return
 	}
 
-	if err := h.Service.ClearCache(taskName); err != nil {
+	if err := h.Service.ClearCache(taskID); err != nil {
 		ErrorMsg(c, fmt.Sprintf("清空缓存失败: %v", err))
 		return
 	}

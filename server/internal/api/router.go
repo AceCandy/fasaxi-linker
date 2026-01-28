@@ -54,12 +54,15 @@ func SetupRouter(h *Handler) *gin.Engine {
 		t.DELETE("/", h.DeleteTask)
 
 		t.GET("/run", h.RunTask)
+		t.POST("/run/stop", h.StopRun)
+		t.GET("/run/status", h.GetRunStatus)
 
 		t.POST("/watch/start", h.StartWatch)
 		t.POST("/watch/stop", h.StopWatch)
 		t.GET("/watch/status", h.GetWatchStatus)
 
 		t.GET("/log", h.GetTaskLog)
+		t.GET("/log/files", h.GetLogFiles)
 		t.DELETE("/log", h.ClearTaskLog)
 		t.DELETE("/cache", h.ClearTaskCache) // Clear all cache for task
 	}

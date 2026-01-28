@@ -1,19 +1,19 @@
 <template>
   <v-dialog v-model="isOpen" max-width="750" persistent class="glass-dialog">
-    <v-card class="editor-card glass-content-card border-neon">
+    <v-card class="editor-card glass-content-card">
       <!-- 头部 -->
-      <div class="editor-header border-b border-neon">
+      <div class="glass-dialog-header">
         <div class="header-content">
           <div class="header-icon">
             <v-icon icon="mdi-cog-outline" size="18" class="text-primary"></v-icon>
           </div>
           <div>
             <div class="header-title font-display text-primary-glow">{{ data ? `编辑配置` : '创建新配置' }}</div>
-            <div v-if="data" class="header-subtitle font-mono text-slate-400">{{ data.name }}</div>
+            <div v-if="data" class="header-subtitle font-mono text-text-muted">{{ data.name }}</div>
           </div>
         </div>
         <button class="close-btn" @click="isOpen = false">
-          <v-icon icon="mdi-close" size="18" class="text-slate-400 hover:text-white"></v-icon>
+          <v-icon icon="mdi-close" size="18" class="text-text-muted hover:text-text"></v-icon>
         </button>
       </div>
 
@@ -21,7 +21,7 @@
       <v-card-text class="editor-content">
         <v-form ref="form" v-model="valid" @submit.prevent="handleSubmit">
           <!-- 基本信息区域 -->
-          <div class="form-section border border-slate-700 bg-slate-900/50">
+          <div class="glass-form-section">
             <div class="section-title mb-2 text-primary font-display">
               基本信息
             </div>
@@ -45,7 +45,7 @@
           </div>
 
           <!-- 配置规则区域 -->
-          <div class="form-section border border-slate-700 bg-slate-900/50">
+          <div class="glass-form-section">
             <div class="section-title mb-2 d-flex align-center justify-space-between text-primary font-display">
               <span>配置规则</span>
               <v-btn 
@@ -70,7 +70,7 @@
       </v-card-text>
 
       <!-- 底部操作区域 -->
-      <div class="editor-footer border-t border-neon bg-slate-900/80">
+      <div class="editor-footer glass-dialog-header" style="background: var(--glass-bg-strong);">
         <v-btn variant="text" size="default" color="grey" @click="isOpen = false" class="font-mono">取消</v-btn>
         <v-btn 
           class="submit-btn btn-neon ml-2"
@@ -294,89 +294,26 @@ watch(() => props.data, (newData) => {
 </script>
 
 <style scoped>
-.glass-content-card {
-  background: rgba(15, 23, 42, 0.95) !important;
-  backdrop-filter: blur(20px) !important;
-  border-radius: 20px !important;
-  box-shadow: 0 0 50px rgba(0, 240, 255, 0.15) !important;
-  overflow: hidden;
-  color: #E0F2F7;
-}
-
-.editor-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  background: linear-gradient(to right, rgba(15, 23, 42, 0.8), rgba(0, 0, 0, 0.6));
-}
-
-.header-content {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.header-icon {
+.close-btn {
   width: 32px;
   height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 240, 255, 0.1);
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
-}
-
-.header-title {
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-}
-
-.header-subtitle {
-  font-size: 11px;
-  opacity: 0.7;
-  margin-top: 2px;
-}
-
-.close-btn {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   border: none;
-  background: transparent;
-  border-radius: 6px;
+  background: rgba(var(--color-surface-rgb), 0.5);
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
 }
 
 .editor-content {
-  padding: 20px !important;
-}
-
-/* 顶部/底部边框 */
-.border-neon {
-  border-color: rgba(0, 240, 255, 0.3) !important;
-}
-.border-slate-700 {
-    border-color: rgba(51, 65, 85, 0.5) !important;
-}
-
-.form-section {
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 16px;
-}
-
-.form-section:last-child {
-  margin-bottom: 0;
+  padding: 24px !important;
 }
 
 .section-title {
@@ -398,8 +335,8 @@ watch(() => props.data, (newData) => {
 
 .code-editor-wrapper {
   flex: 1;
-  border-color: rgba(51, 65, 85, 0.5);
-  background-color: rgba(15, 23, 42, 0.5);
+  border-color: var(--color-border);
+  background-color: rgba(var(--color-background-rgb), 0.5);
   overflow: hidden;
   min-height: 400px;
 }
@@ -420,29 +357,29 @@ watch(() => props.data, (newData) => {
 :deep(.v-field__outline__start),
 :deep(.v-field__outline__end),
 :deep(.v-field__outline__notch) {
-  border-color: rgba(51, 65, 85, 0.5) !important;
+  border-color: var(--color-border) !important;
 }
 
 :deep(.v-field:hover .v-field__outline__start),
 :deep(.v-field:hover .v-field__outline__end),
 :deep(.v-field:hover .v-field__outline__notch) {
-  border-color: rgba(0, 240, 255, 0.5) !important;
+  border-color: var(--color-primary) !important;
 }
 
 :deep(.v-field--focused .v-field__outline__start),
 :deep(.v-field--focused .v-field__outline__end),
 :deep(.v-field--focused .v-field__outline__notch) {
-  border-color: #00F0FF !important;
-  box-shadow: 0 0 5px rgba(0, 240, 255, 0.2);
+  border-color: var(--color-primary) !important;
+  box-shadow: var(--shadow-neon);
 }
 
 :deep(.v-field__input) {
-  color: #E0F2F7 !important;
+  color: var(--color-text) !important;
   font-family: 'Space Mono', monospace;
 }
 
 :deep(.v-label) {
-  color: rgba(148, 163, 184, 0.8) !important;
+  color: var(--color-text-muted) !important;
 }
 
 /* 优化按钮图标间距 */
