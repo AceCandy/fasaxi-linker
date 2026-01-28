@@ -365,18 +365,27 @@ const handleClearAll = () => {
   showDialog('clear_all')
 }
 
-// 确认清空全部（只清空当前任务的缓存）
+// 确认清空全部（只清空当前搜索结果）
 const confirmClearAll = async () => {
   clearLoading.value = true
   try {
     const taskId = currentTask.value?.id
     if (!taskId) return
 
-    await fetch.delete('/api/task/cache', { taskId })
+    // 如果有搜索条件，只清空匹配的缓存
+    const params: any = { taskId }
+    if (searchQuery.value.trim()) {
+      params.search = searchQuery.value.trim()
+    }
+    await fetch.delete('/api/task/cache', params)
     
     loadCache()
     dialogState.visible = false
-    snackbar.value = { visible: true, text: '该任务缓存已清空', color: 'success' }
+    snackbar.value = { 
+      visible: true, 
+      text: searchQuery.value.trim() ? `匹配"${searchQuery.value}"的缓存已清空` : '该任务缓存已清空', 
+      color: 'success' 
+    }
   } catch (e) {
     console.error('清空缓存失败:', e)
     snackbar.value = { visible: true, text: '清空失败', color: 'error' }

@@ -829,9 +829,21 @@ func (h *Handler) ClearTaskCache(c *gin.Context) {
 		return
 	}
 
-	if err := h.Service.ClearCache(taskID); err != nil {
-		ErrorMsg(c, fmt.Sprintf("清空缓存失败: %v", err))
-		return
+	search := c.Query("search")
+
+	if search != "" {
+		// Clear only matching entries
+		cacheStore := &cache.Store{}
+		if err := cacheStore.ClearByTaskIDWithSearch(taskID, search); err != nil {
+			ErrorMsg(c, fmt.Sprintf("清空缓存失败: %v", err))
+			return
+		}
+	} else {
+		// Clear all cache for this task
+		if err := h.Service.ClearCache(taskID); err != nil {
+			ErrorMsg(c, fmt.Sprintf("清空缓存失败: %v", err))
+			return
+		}
 	}
 
 	Success(c, true)

@@ -186,7 +186,7 @@ func (w *Watcher) handleAdd(path string) {
 		cache.SetTaskID(w.options.TaskID) // Set task ID for cache isolation
 
 		// 2. L2 DB Cache Check
-		if has, _ := cache.Has(path, true); has {
+		if has, _ := cache.Has(path); has {
 			w.logger("WARN", fmt.Sprintf("⚠️ 跳过(已缓存): %s", path))
 			// Add to memory cache
 			w.memCache.Store(path, struct{}{})

@@ -208,6 +208,14 @@ func createTables(ctx context.Context) error {
 		return fmt.Errorf("failed to create cache_files table: %w", err)
 	}
 
+	// Create index for ORDER BY created_at DESC queries (pagination)
+	cacheFilesIndexes := `
+	CREATE INDEX IF NOT EXISTS idx_cache_files_task_created ON cache_files(task_id, created_at DESC);
+	`
+	if _, err := pool.Exec(ctx, cacheFilesIndexes); err != nil {
+		return fmt.Errorf("failed to create indexes for cache_files table: %w", err)
+	}
+
 	cacheFilesComments := `
 	COMMENT ON TABLE cache_files IS '缓存文件表';
 	COMMENT ON COLUMN cache_files.id IS '主键';

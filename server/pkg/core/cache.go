@@ -55,6 +55,6 @@ func (c *Cache) Add(newFiles []string) error {
 }
 
 // Has checks if a file is in cache for this task
-func (c *Cache) Has(file string, ignoreCase bool) (bool, error) {
-	return c.store.Has(c.taskID, file, ignoreCase)
+func (c *Cache) Has(file string) (bool, error) {
+	return c.store.Has(c.taskID, file)
 }

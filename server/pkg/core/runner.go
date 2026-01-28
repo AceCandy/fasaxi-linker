@@ -58,7 +58,7 @@ func Run(opts Options, logger func(string, string)) (Stats, error) {
 
 			// Check Cache (skip for now to speed up)
 			if opts.OpenCache && cache != nil {
-				has, _ := cache.Has(path, true)
+				has, _ := cache.Has(path)
 				if has {
 					if logger != nil {
 						logger("WARN", fmt.Sprintf("⚠️ 跳过(已缓存): %s", path))

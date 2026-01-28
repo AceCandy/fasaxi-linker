@@ -52,7 +52,7 @@ func (s *Store) GetByTaskID(taskID int) ([]string, error) {
 }
 
 // Has checks if a file path exists in cache for a specific task
-func (s *Store) Has(taskID int, filePath string, ignoreCase bool) (bool, error) {
+func (s *Store) Has(taskID int, filePath string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -61,19 +61,10 @@ func (s *Store) Has(taskID int, filePath string, ignoreCase bool) (bool, error) 
 		return false, fmt.Errorf("database connection pool is not initialized")
 	}
 
-	var query string
-	var args []interface{}
-
-	if ignoreCase {
-		query = `SELECT EXISTS(SELECT 1 FROM cache_files WHERE task_id = $1 AND LOWER(file_path) = LOWER($2))`
-		args = []interface{}{taskID, filePath}
-	} else {
-		query = `SELECT EXISTS(SELECT 1 FROM cache_files WHERE task_id = $1 AND file_path = $2)`
-		args = []interface{}{taskID, filePath}
-	}
+	query := `SELECT EXISTS(SELECT 1 FROM cache_files WHERE task_id = $1 AND file_path = $2)`
 
 	var exists bool
-	err := pool.QueryRow(ctx, query, args...).Scan(&exists)
+	err := pool.QueryRow(ctx, query, taskID, filePath).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("failed to check cache: %w", err)
 	}
@@ -81,13 +72,19 @@ func (s *Store) Has(taskID int, filePath string, ignoreCase bool) (bool, error) 
 	return exists, nil
 }
 
-// Add adds new file paths to cache for a specific task
+// Add adds new file paths to cache for a specific task (batch insert for performance)
 func (s *Store) Add(taskID int, filePaths []string) error {
 	if len(filePaths) == 0 {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	// Increase timeout for large batches (1 minute per 10000 files)
+	timeout := time.Duration(len(filePaths)/10000+1) * time.Minute
+	if timeout > 10*time.Minute {
+		timeout = 10 * time.Minute
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	pool := db.GetPool()
@@ -95,22 +92,33 @@ func (s *Store) Add(taskID int, filePaths []string) error {
 		return fmt.Errorf("database connection pool is not initialized")
 	}
 
-	tx, err := pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback(ctx)
-
-	query := `INSERT INTO cache_files (task_id, file_path) VALUES ($1, $2) ON CONFLICT (task_id, file_path) DO NOTHING`
-
-	for _, filePath := range filePaths {
-		if _, err := tx.Exec(ctx, query, taskID, filePath); err != nil {
-			return fmt.Errorf("failed to insert cache file %s: %w", filePath, err)
+	// Use batch insert with UNNEST for better performance
+	const batchSize = 5000
+	for i := 0; i < len(filePaths); i += batchSize {
+		end := i + batchSize
+		if end > len(filePaths) {
+			end = len(filePaths)
 		}
-	}
+		batch := filePaths[i:end]
 
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+		// Build values for batch insert
+		values := make([]string, len(batch))
+		args := make([]interface{}, len(batch)+1)
+		args[0] = taskID
+
+		for j, path := range batch {
+			values[j] = fmt.Sprintf("($1, $%d)", j+2)
+			args[j+1] = path
+		}
+
+		query := fmt.Sprintf(
+			`INSERT INTO cache_files (task_id, file_path) VALUES %s ON CONFLICT (task_id, file_path) DO NOTHING`,
+			strings.Join(values, ", "),
+		)
+
+		if _, err := pool.Exec(ctx, query, args...); err != nil {
+			return fmt.Errorf("failed to batch insert cache files: %w", err)
+		}
 	}
 
 	return nil
@@ -147,6 +155,25 @@ func (s *Store) ClearByTaskID(taskID int) error {
 	query := `DELETE FROM cache_files WHERE task_id = $1`
 	if _, err := pool.Exec(ctx, query, taskID); err != nil {
 		return fmt.Errorf("failed to clear cache for task %d: %w", taskID, err)
+	}
+
+	return nil
+}
+
+// ClearByTaskIDWithSearch removes cache entries matching search condition
+func (s *Store) ClearByTaskIDWithSearch(taskID int, search string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool := db.GetPool()
+	if pool == nil {
+		return fmt.Errorf("database connection pool is not initialized")
+	}
+
+	query := `DELETE FROM cache_files WHERE task_id = $1 AND file_path ILIKE $2`
+	searchPattern := "%" + search + "%"
+	if _, err := pool.Exec(ctx, query, taskID, searchPattern); err != nil {
+		return fmt.Errorf("failed to clear cache for task %d with search: %w", taskID, err)
 	}
 
 	return nil
