@@ -75,7 +75,7 @@ func (s *Store) loadTasks(ctx context.Context) ([]Task, error) {
 		       save_mode, open_cache, mkdir_if_single, delete_dir, keep_dir_struct,
 		       schedule_type, schedule_value, reverse, config, config_id, is_watching, watch_error
 		FROM tasks
-		ORDER BY name
+		ORDER BY id
 	`
 
 	rows, err := pool.Query(ctx, query)
@@ -126,7 +126,7 @@ func (s *Store) loadConfigs(ctx context.Context) ([]Config, error) {
 	query := `
 		SELECT id, name, detail
 		FROM configs
-		ORDER BY name
+		ORDER BY id
 	`
 
 	rows, err := pool.Query(ctx, query)

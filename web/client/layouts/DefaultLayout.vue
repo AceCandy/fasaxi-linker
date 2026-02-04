@@ -61,7 +61,7 @@
 
    <v-main class="main-content">
       <v-container fluid class="pa-0 h-100">
-        <div class="w-full max-w-7xl mx-auto px-4 py-6 h-100">
+        <div class="w-full max-w-7xl mx-auto px-4 py-6 scroll-container">
           <router-view v-slot="{ Component, route }">
             <transition name="page-fade" mode="out-in">
               <component :is="Component" :key="route.path" />
@@ -171,8 +171,37 @@ const themeStore = useThemeStore()
   color: var(--color-primary) !important;
 }
 
+.scroll-container {
+  height: 100%;
+  overflow-y: auto;
+  /* Custom Scrollbar for container */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-surface) transparent;
+}
+
+.scroll-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-container::-webkit-scrollbar-thumb {
+  background-color: var(--color-surface);
+  border-radius: 3px;
+}
+
+.scroll-container::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-primary);
+}
+
 .main-content {
   position: relative;
+  height: 100vh;
+  padding-top: 72px !important;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Page Transition */
