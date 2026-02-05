@@ -18,6 +18,7 @@
     "clean": "rm -rf node_modules && rm -rf web/node_modules"
   },
   "devDependencies": {
+    "@rollup/rollup-darwin-arm64": "^4.57.1",
     "vite": "^5.2.0"
   },
   "packageManager": "pnpm@9.1.0",

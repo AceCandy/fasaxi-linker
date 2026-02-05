@@ -54,6 +54,13 @@
             <v-list-item href="https://hlink.likun.me" target="_blank" prepend-icon="mdi-book-open-variant" class="menu-item-hover">
               <v-list-item-title class="font-mono">文档</v-list-item-title>
             </v-list-item>
+            <v-divider class="my-1"></v-divider>
+            <v-list-item @click="showChangePasswordDialog = true" prepend-icon="mdi-lock-reset" class="menu-item-hover">
+              <v-list-item-title class="font-mono">修改密码</v-list-item-title>
+            </v-list-item>
+            <v-list-item @click="handleLogout" prepend-icon="mdi-logout" class="menu-item-hover logout-item">
+              <v-list-item-title class="font-mono">退出登录</v-list-item-title>
+            </v-list-item>
           </v-list>
         </v-menu>
       </div>
@@ -70,15 +77,29 @@
         </div>
       </v-container>
     </v-main>
+
+    <!-- Change Password Dialog -->
+    <ChangePasswordDialog v-model="showChangePasswordDialog" />
   </v-layout>
 </template>
 
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
+import { ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useThemeStore } from '../stores/theme'
+import { useAuthStore } from '../stores/auth'
+import ChangePasswordDialog from '../components/ChangePasswordDialog.vue'
 
 const $route = useRoute()
+const router = useRouter()
 const themeStore = useThemeStore()
+const authStore = useAuthStore()
+const showChangePasswordDialog = ref(false)
+
+function handleLogout() {
+  authStore.logout()
+  router.push('/login')
+}
 </script>
 
 <style scoped>

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/fasaxi-linker/servergo/internal/auth"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -15,21 +16,27 @@ func SetupRouter(h *Handler) *gin.Engine {
 	r.Use(cors.New(cors.Config{
 		AllowAllOrigins:  true,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 	}))
 
-	// System
+	// === Public Routes (no auth required) ===
+
+	// Auth routes
+	r.POST("/api/auth/login", h.Login)
+
+	// System (public)
 	r.GET("/api/version", h.Version)
 	r.GET("/api/update", h.Update)
 
-	// Define /api group first
+	// === Protected Routes (auth required) ===
 	api := r.Group("/api")
+	api.Use(auth.AuthMiddleware(h.AuthService))
 
-	// System (move under api group if needed, but previously defined as absolute paths on r)
-	// r.GET("/api/version") works fine too. but consistency.
-	// Let's stick with existing system defines for now.
+	// Auth (protected)
+	api.GET("/auth/user", h.GetCurrentUser)
+	api.POST("/auth/change-password", h.ChangePassword)
 
 	// Config
 	config := api.Group("/config")
@@ -70,9 +77,9 @@ func SetupRouter(h *Handler) *gin.Engine {
 	// Cache
 	cache := api.Group("/cache")
 	{
-		api.GET("/cache", h.GetCache)
-		api.PUT("/cache", h.UpdateCache)    // Deprecated
-		api.DELETE("/cache", h.DeleteCache) // New: Remove specific files
+		cache.GET("/", h.GetCache)
+		cache.PUT("/", h.UpdateCache)    // Deprecated
+		cache.DELETE("/", h.DeleteCache) // New: Remove specific files
 		cache.GET("/log", h.GetCacheLog)
 		cache.DELETE("/log", h.ClearCacheLog)
 	}

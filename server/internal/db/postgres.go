@@ -158,6 +158,16 @@ func createTables(ctx context.Context) error {
 	);
 	`
 
+	usersTable := `
+	CREATE TABLE IF NOT EXISTS users (
+		id SERIAL PRIMARY KEY,
+		username VARCHAR(255) UNIQUE NOT NULL,
+		password_hash VARCHAR(255) NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);
+	`
+
 	if _, err := pool.Exec(ctx, tasksTable); err != nil {
 		return fmt.Errorf("failed to create tasks table: %w", err)
 	}
@@ -225,6 +235,23 @@ func createTables(ctx context.Context) error {
 	`
 	if _, err := pool.Exec(ctx, cacheFilesComments); err != nil {
 		return fmt.Errorf("failed to add comments for cache_files table: %w", err)
+	}
+
+	// Create users table for authentication
+	if _, err := pool.Exec(ctx, usersTable); err != nil {
+		return fmt.Errorf("failed to create users table: %w", err)
+	}
+
+	usersComments := `
+	COMMENT ON TABLE users IS '用户表';
+	COMMENT ON COLUMN users.id IS '用户ID';
+	COMMENT ON COLUMN users.username IS '用户名';
+	COMMENT ON COLUMN users.password_hash IS '密码哈希';
+	COMMENT ON COLUMN users.created_at IS '创建时间';
+	COMMENT ON COLUMN users.updated_at IS '更新时间';
+	`
+	if _, err := pool.Exec(ctx, usersComments); err != nil {
+		return fmt.Errorf("failed to add comments for users table: %w", err)
 	}
 
 	// Note: task_logs table has been removed - logs are now stored as files in ./logs/task_{id}/

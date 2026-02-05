@@ -1,14 +1,17 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
 	"strconv"
 
+	"github.com/fasaxi-linker/servergo/internal/auth"
 	"github.com/fasaxi-linker/servergo/internal/cache"
 	"github.com/fasaxi-linker/servergo/internal/config"
+	"github.com/fasaxi-linker/servergo/internal/db"
 	"github.com/fasaxi-linker/servergo/internal/logs"
 	"github.com/fasaxi-linker/servergo/internal/task"
 	"github.com/gin-gonic/gin"
@@ -17,6 +20,7 @@ import (
 type Handler struct {
 	Service       *task.Service
 	ConfigService *config.Service
+	AuthService   *auth.Service
 }
 
 func NewHandler() (*Handler, error) {
@@ -28,13 +32,83 @@ func NewHandler() (*Handler, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Initialize auth service
+	authService := auth.NewService(db.GetPool())
+
+	// Ensure default admin user exists
+	if err := authService.EnsureDefaultUser(context.Background()); err != nil {
+		return nil, fmt.Errorf("failed to ensure default user: %w", err)
+	}
+
 	return &Handler{
 		Service:       s,
 		ConfigService: cs,
+		AuthService:   authService,
 	}, nil
 }
 
-// ... existing System methods ...
+// === Auth ===
+
+// Login 用户登录
+func (h *Handler) Login(c *gin.Context) {
+	var req auth.LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		ErrorMsg(c, "请提供用户名和密码")
+		return
+	}
+
+	resp, err := h.AuthService.Login(c.Request.Context(), req.Username, req.Password)
+	if err != nil {
+		ErrorMsg(c, err.Error())
+		return
+	}
+
+	Success(c, resp)
+}
+
+// GetCurrentUser 获取当前登录用户信息
+func (h *Handler) GetCurrentUser(c *gin.Context) {
+	userID, ok := auth.GetUserID(c)
+	if !ok {
+		ErrorMsg(c, "未找到用户信息")
+		return
+	}
+
+	user, err := h.AuthService.GetCurrentUser(c.Request.Context(), userID)
+	if err != nil {
+		ErrorMsg(c, "获取用户信息失败")
+		return
+	}
+
+	Success(c, gin.H{
+		"id":       user.ID,
+		"username": user.Username,
+	})
+}
+
+// ChangePassword 修改密码
+func (h *Handler) ChangePassword(c *gin.Context) {
+	userID, ok := auth.GetUserID(c)
+	if !ok {
+		ErrorMsg(c, "未找到用户信息")
+		return
+	}
+
+	var req auth.ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		ErrorMsg(c, "请提供旧密码和新密码")
+		return
+	}
+
+	err := h.AuthService.ChangePassword(c.Request.Context(), userID, req.OldPassword, req.NewPassword)
+	if err != nil {
+		ErrorMsg(c, err.Error())
+		return
+	}
+
+	Success(c, gin.H{"message": "密码修改成功"})
+}
 
 // === Config ===
 
